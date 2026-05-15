@@ -1,0 +1,68 @@
+import type { GameCard } from '@/types';
+
+export const trendingGames: GameCard[] = [
+  {
+    id: '1',
+    title: 'Gates of\nOlympus 1000',
+    provider: 'Pragmatic Play',
+    playing: 805,
+    gradient: 'linear-gradient(135deg, #1a3a6e 0%, #2563b0 40%, #8b5cf6 100%)',
+    accentColor: '#fbbf24',
+  },
+  {
+    id: '2',
+    title: 'Sugar\nRush 1000',
+    provider: 'Pragmatic Play',
+    playing: 891,
+    gradient: 'linear-gradient(135deg, #ea580c 0%, #f97316 40%, #fbbf24 100%)',
+    accentColor: '#fb923c',
+  },
+  {
+    id: '3',
+    title: 'Sweet\nBonanza 2500',
+    provider: 'Pragmatic Play',
+    playing: 357,
+    gradient: 'linear-gradient(135deg, #9333ea 0%, #ec4899 50%, #f472b6 100%)',
+    accentColor: '#f472b6',
+  },
+  {
+    id: '4',
+    title: 'Gates of Olympus\nSuper Scatter',
+    provider: 'Pragmatic Play',
+    playing: 563,
+    gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 40%, #fde68a 100%)',
+    accentColor: '#fde68a',
+  },
+  {
+    id: '5',
+    title: 'Wanted Dead\nor a Wild',
+    provider: 'Hacksaw Gaming',
+    playing: 270,
+    gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 40%, #4c1d95 100%)',
+    accentColor: '#a78bfa',
+  },
+  {
+    id: '6',
+    title: 'Sweet\nBonanza 1000',
+    provider: 'Pragmatic Play',
+    playing: 569,
+    gradient: 'linear-gradient(135deg, #be185d 0%, #ec4899 50%, #f9a8d4 100%)',
+    accentColor: '#f9a8d4',
+  },
+  {
+    id: '7',
+    title: "Mr Null's\nWicked Wares",
+    provider: 'Pragmatic Play',
+    playing: 96,
+    gradient: 'linear-gradient(135deg, #065f46 0%, #059669 40%, #34d399 100%)',
+    accentColor: '#34d399',
+  },
+  {
+    id: '8',
+    title: 'Gates of\nAthena',
+    provider: 'Twist Gaming',
+    playing: 84,
+    gradient: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 50%, #a855f7 100%)',
+    accentColor: '#c4b5fd',
+  },
+];
