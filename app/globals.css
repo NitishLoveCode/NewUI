@@ -14,6 +14,9 @@
   --color-casino-navy: #0d1d2b;
   --color-casino-border: rgba(255,255,255,0.08);
   --color-casino-green: #00e701;
+  --color-casino-primary: #00e676;
+  --color-casino-primary-hover: #00ff88;
+  --color-casino-primary-glow: rgba(0,230,118,0.5);
   --color-casino-blue: #1475e1;
   --color-casino-blue-hover: #1a85f5;
   --color-casino-text: #ffffff;
@@ -167,4 +170,9 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
