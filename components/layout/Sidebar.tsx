@@ -1,6 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Gift, Trophy, Users, Crown, Newspaper, MessageSquare,
   Handshake, Shield, Headphones, Globe, ChevronDown,
@@ -38,17 +40,10 @@ export default function Sidebar({ isExpanded }: SidebarProps) {
       style={{ backgroundColor: '#1a2c38' }}
     >
       <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden py-3">
-        {/* Main section */}
         <SidebarGroup items={mainItems} isExpanded={isExpanded} />
-
         <div className="my-3 mx-3" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-
-        {/* Info section */}
         <SidebarGroup items={infoItems} isExpanded={isExpanded} />
-
         <div className="my-3 mx-3" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-
-        {/* Support section */}
         <SidebarGroup items={supportItems} isExpanded={isExpanded} />
       </div>
     </motion.aside>
@@ -62,19 +57,20 @@ function SidebarGroup({
   items: typeof sidebarItems;
   isExpanded: boolean;
 }) {
+  const pathname = usePathname();
+
   return (
     <div className="flex flex-col gap-0.5 px-2">
       {items.map(item => {
         const Icon = iconMap[item.icon] || Gift;
-        return (
-          <motion.button
-            key={item.id}
-            whileHover={{ backgroundColor: 'rgba(47,69,83,0.8)' }}
-            className="flex items-center gap-3 px-2 py-2.5 rounded-lg cursor-pointer transition-colors w-full text-left"
-            style={{ color: '#b1bad3', minHeight: 42 }}
-            title={!isExpanded ? item.label : undefined}
-          >
-            <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
+        const isActive = item.href ? pathname === item.href : false;
+
+        const innerContent = (
+          <>
+            <div
+              className="flex-shrink-0 flex items-center justify-center w-6 h-6"
+              style={{ color: isActive ? '#00e676' : 'inherit' }}
+            >
               <Icon size={18} />
             </div>
             <AnimatePresence>
@@ -93,6 +89,42 @@ function SidebarGroup({
                 </motion.div>
               )}
             </AnimatePresence>
+          </>
+        );
+
+        const baseStyle: React.CSSProperties = {
+          color: isActive ? '#00e676' : '#b1bad3',
+          backgroundColor: isActive ? 'rgba(0,230,118,0.08)' : undefined,
+          borderLeft: isActive ? '2px solid #00e676' : '2px solid transparent',
+          minHeight: 42,
+        };
+
+        if (item.href) {
+          return (
+            <Link key={item.id} href={item.href} className="block w-full">
+              <motion.div
+                whileHover={{
+                  backgroundColor: isActive ? 'rgba(0,230,118,0.12)' : 'rgba(47,69,83,0.8)',
+                }}
+                className="flex items-center gap-3 px-2 py-2.5 rounded-lg cursor-pointer transition-colors w-full"
+                style={baseStyle}
+                title={!isExpanded ? item.label : undefined}
+              >
+                {innerContent}
+              </motion.div>
+            </Link>
+          );
+        }
+
+        return (
+          <motion.button
+            key={item.id}
+            whileHover={{ backgroundColor: 'rgba(47,69,83,0.8)' }}
+            className="flex items-center gap-3 px-2 py-2.5 rounded-lg cursor-pointer transition-colors w-full text-left"
+            style={baseStyle}
+            title={!isExpanded ? item.label : undefined}
+          >
+            {innerContent}
           </motion.button>
         );
       })}
