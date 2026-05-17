@@ -570,6 +570,8 @@ function CodeEditorPanel({
       return () => clearTimeout(timer);
     }
   }, [showCelebration]);
+
+  return (
     <div
       className="flex flex-col rounded-2xl overflow-hidden h-full"
       style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
