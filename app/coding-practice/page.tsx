@@ -532,7 +532,7 @@ function CodeEditorPanel({
       </div>
 
       {/* Code area */}
-      <div className="flex-1 overflow-auto font-mono text-[10px] p-2 leading-5" style={{ background: '#0d1117' }}>
+      <div className="flex-1 overflow-hidden font-mono text-[10px] p-2 leading-5" style={{ background: '#0d1117' }}>
         {CODE_LINES.map((line, i) => (
           <motion.div
             key={i}
@@ -634,7 +634,7 @@ function CodeEditorPanel({
             className="overflow-hidden border-t"
             style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0a0f1a', maxHeight: '100px' }}
           >
-            <div className="p-1.5 font-mono text-[8px] space-y-0 overflow-auto">
+            <div className="p-1.5 font-mono text-[8px] space-y-0 overflow-hidden">
               <AnimatePresence>
                 {terminalLines.map((line, i) => (
                   <motion.div
