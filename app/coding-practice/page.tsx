@@ -777,26 +777,26 @@ function VideoCallBar({
 
   const VideoBox = ({ isYou, color }: { isYou: boolean; color: string }) => (
     <div
-      className="relative rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0"
+      className="relative rounded-lg overflow-hidden flex items-center justify-center flex-1"
       style={{
-        width: 60, height: 60,
+        height: 100,
         background: isCameraOff ? 'rgba(0,0,0,0.5)' : `linear-gradient(135deg, ${color}20, rgba(0,0,0,0.7))`,
         border: `1px solid ${color}35`,
       }}
     >
       {isCameraOff ? (
-        <div className="text-lg">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
+        <div className="text-4xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
       ) : (
-        <div className="text-2xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
+        <div className="text-5xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
       )}
       <div
-        className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-center text-[7px] font-bold"
+        className="absolute bottom-0 left-0 right-0 px-1 py-1 text-center text-[9px] font-bold"
         style={{ background: 'rgba(0,0,0,0.7)', color }}
       >
         {isYou ? 'You' : 'Partner'}
       </div>
       {!isYou && (
-        <motion.div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ background: '#4ade80' }}
+        <motion.div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: '#4ade80' }}
           animate={{ scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }} transition={{ duration: 0.8, repeat: Infinity }} />
       )}
     </div>
@@ -807,7 +807,7 @@ function VideoCallBar({
       onClick={onClick}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.92 }}
-      className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-semibold"
+      className="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[8px] font-semibold flex-1"
       style={{ background: `${color}12`, border: `0.5px solid ${color}35`, color }}
     >
       {icon}
@@ -816,47 +816,48 @@ function VideoCallBar({
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 mb-3 flex-wrap">
-      {/* Video boxes */}
-      <div className="flex gap-2">
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2 mb-3 w-full">
+      {/* Video boxes - Full width */}
+      <div className="flex gap-2 w-full">
         <VideoBox isYou color="#7c3aed" />
         <VideoBox isYou={false} color="#22d3ee" />
       </div>
 
-      {/* Timer */}
-      <div
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
-        style={{ background: 'rgba(34,211,238,0.08)', border: '0.5px solid rgba(34,211,238,0.2)' }}
-      >
-        <Clock size={12} style={{ color: '#22d3ee' }} />
-        <span className="font-mono text-xs font-bold" style={{ color: '#22d3ee' }}>{fmt(elapsed)}</span>
-      </div>
-
-      {/* Controls */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <CtrlBtn onClick={onMute} active={isMuted} color={isMuted ? '#f87171' : '#4ade80'} icon={isMuted ? <MicOff size={12} /> : <Mic size={12} />} label="Mute" />
-        <CtrlBtn onClick={onCamera} active={isCameraOff} color={isCameraOff ? '#f87171' : '#22d3ee'} icon={isCameraOff ? <VideoOff size={12} /> : <Video size={12} />} label="Cam" />
-        <CtrlBtn onClick={onRecording} active={isRecording} color={isRecording ? '#f97316' : '#c084fc'} icon={isRecording ? <MonitorStop size={12} /> : <ScreenShare size={12} />} label="Rec" />
-
-        <div className="hidden sm:block w-px h-4 bg-white/10" />
-
-        <motion.button
-          onClick={onDisconnect}
-          whileHover={{ scale: 1.06, boxShadow: '0 0 12px rgba(248,113,113,0.4)' }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold"
-          style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717130' }}
+      {/* Timer and Controls - Bottom Row */}
+      <div className="flex items-center gap-2 w-full">
+        {/* Timer */}
+        <div
+          className="flex items-center gap-1 px-2 py-1.5 rounded-lg flex-shrink-0"
+          style={{ background: 'rgba(34,211,238,0.08)', border: '0.5px solid rgba(34,211,238,0.2)' }}
         >
-          <PhoneOff size={11} />
-          <span className="hidden sm:inline">End</span>
-        </motion.button>
+          <Clock size={11} style={{ color: '#22d3ee' }} />
+          <span className="font-mono text-[9px] font-bold" style={{ color: '#22d3ee' }}>{fmt(elapsed)}</span>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-1 flex-1">
+          <CtrlBtn onClick={onMute} active={isMuted} color={isMuted ? '#f87171' : '#4ade80'} icon={isMuted ? <MicOff size={11} /> : <Mic size={11} />} label="Mute" />
+          <CtrlBtn onClick={onCamera} active={isCameraOff} color={isCameraOff ? '#f87171' : '#22d3ee'} icon={isCameraOff ? <VideoOff size={11} /> : <Video size={11} />} label="Cam" />
+          <CtrlBtn onClick={onRecording} active={isRecording} color={isRecording ? '#f97316' : '#c084fc'} icon={isRecording ? <MonitorStop size={11} /> : <ScreenShare size={11} />} label="Rec" />
+
+          <motion.button
+            onClick={onDisconnect}
+            whileHover={{ scale: 1.06, boxShadow: '0 0 12px rgba(248,113,113,0.4)' }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[8px] font-bold flex-1"
+            style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717130' }}
+          >
+            <PhoneOff size={10} />
+            <span className="hidden sm:inline">End</span>
+          </motion.button>
+        </div>
       </div>
 
       {/* Recording indicator */}
       <AnimatePresence>
         {isRecording && (
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg ml-auto"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg w-full justify-center"
             style={{ background: 'rgba(239,68,68,0.1)', border: '0.5px solid rgba(239,68,68,0.3)' }}>
             <motion.div className="w-2 h-2 rounded-full bg-red-500" animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />
             <span className="text-[8px] font-black text-red-400">REC</span>
