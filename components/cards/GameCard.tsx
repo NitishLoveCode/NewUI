@@ -3,13 +3,14 @@
 import { motion } from 'framer-motion';
 import type { GameCard } from '@/types';
 
-export default function GameCardComponent({ game }: { game: GameCard }) {
+export default function GameCardComponent({ game, onClick }: { game: GameCard; onClick?: () => void }) {
   return (
     <motion.div
       whileHover={{ scale: 1.05, y: -4 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className="flex-shrink-0 cursor-pointer"
       style={{ width: 130 }}
+      onClick={onClick}
     >
       {/* Card image area */}
       <div

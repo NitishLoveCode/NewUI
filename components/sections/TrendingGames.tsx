@@ -1,16 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 import SectionHeader from './SectionHeader';
 import GameCardComponent from '@/components/cards/GameCard';
+import GameDetailOverlay from '@/components/overlays/GameDetailOverlay';
 import { trendingGames } from '@/data/games';
+import type { GameCard } from '@/types';
 
 const MOBILE_INITIAL = 6;
 
 export default function TrendingGames() {
   const [showAll, setShowAll] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<GameCard | null>(null);
+
   const mobileGames = showAll ? trendingGames : trendingGames.slice(0, MOBILE_INITIAL);
 
   return (
@@ -29,7 +33,7 @@ export default function TrendingGames() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.3 }}
           >
-            <GameCardComponent game={game} />
+            <GameCardComponent game={game} onClick={() => setSelectedGame(game)} />
           </motion.div>
         ))}
       </div>
@@ -45,7 +49,11 @@ export default function TrendingGames() {
               transition={{ delay: i * 0.05 }}
               className="w-full"
             >
-              <div className="cursor-pointer" style={{ width: '100%' }}>
+              <div
+                className="cursor-pointer"
+                style={{ width: '100%' }}
+                onClick={() => setSelectedGame(game)}
+              >
                 <div
                   className="relative rounded-xl overflow-hidden"
                   style={{ aspectRatio: '3/4', background: game.gradient }}
@@ -88,6 +96,17 @@ export default function TrendingGames() {
           </div>
         )}
       </div>
+
+      {/* Game detail overlay */}
+      <AnimatePresence>
+        {selectedGame && (
+          <GameDetailOverlay
+            key={selectedGame.id}
+            game={selectedGame}
+            onClose={() => setSelectedGame(null)}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
