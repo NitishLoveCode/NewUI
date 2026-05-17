@@ -563,6 +563,13 @@ function CodeEditorPanel({
       setShowCelebration(true);
     }
   };
+
+  useEffect(() => {
+    if (showCelebration) {
+      const timer = setTimeout(() => setShowCelebration(false), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [showCelebration]);
     <div
       className="flex flex-col rounded-2xl overflow-hidden h-full"
       style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
@@ -823,14 +830,6 @@ function CodeEditorPanel({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Auto-close celebration after 1 second */}
-      {showCelebration && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          onAnimationComplete={() => setTimeout(() => setShowCelebration(false), 1000)}
-        />
-      )}
     </div>
   );
 }
