@@ -60,6 +60,70 @@ const CODE_LINES = [
   { text: '}',                                      color: '#c084fc' },
 ];
 
+const CODE_BY_LANGUAGE: Record<string, typeof CODE_LINES> = {
+  js: CODE_LINES,
+  python: [
+    { text: 'def binary_search(nums, target):', color: '#c084fc' },
+    { text: '    left = 0', color: '#e2e8f0' },
+    { text: '    right = len(nums) - 1', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '    while left <= right:', color: '#fbbf24' },
+    { text: '        mid = (left + right) // 2', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '        if nums[mid] == target:', color: '#fbbf24' },
+    { text: '            return mid  # Found!', color: '#64748b' },
+    { text: '        elif nums[mid] < target:', color: '#fbbf24' },
+    { text: '            left = mid + 1', color: '#f87171' },
+    { text: '        else:', color: '#fbbf24' },
+    { text: '            right = mid - 1', color: '#60a5fa' },
+    { text: '', color: '' },
+    { text: '    return -1  # Not found', color: '#64748b' },
+  ],
+  java: [
+    { text: 'public static int binarySearch(', color: '#c084fc' },
+    { text: '    int[] nums, int target) {', color: '#c084fc' },
+    { text: '  int left = 0;', color: '#e2e8f0' },
+    { text: '  int right = nums.length - 1;', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '  while (left <= right) {', color: '#fbbf24' },
+    { text: '    int mid = left + (right - left) / 2;', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '    if (nums[mid] == target)', color: '#fbbf24' },
+    { text: '      return mid;', color: '#60a5fa' },
+    { text: '    else if (nums[mid] < target)', color: '#fbbf24' },
+    { text: '      left = mid + 1;', color: '#f87171' },
+    { text: '    else', color: '#fbbf24' },
+    { text: '      right = mid - 1;', color: '#60a5fa' },
+    { text: '  }', color: '#fbbf24' },
+    { text: '  return -1;', color: '#64748b' },
+    { text: '}', color: '#c084fc' },
+  ],
+  cpp: [
+    { text: 'int binarySearch(vector<int>& nums,', color: '#c084fc' },
+    { text: '    int target) {', color: '#c084fc' },
+    { text: '  int left = 0, right = nums.size() - 1;', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '  while (left <= right) {', color: '#fbbf24' },
+    { text: '    int mid = left + (right - left) / 2;', color: '#e2e8f0' },
+    { text: '', color: '' },
+    { text: '    if (nums[mid] == target)', color: '#fbbf24' },
+    { text: '      return mid;', color: '#60a5fa' },
+    { text: '    else if (nums[mid] < target)', color: '#fbbf24' },
+    { text: '      left = mid + 1;', color: '#f87171' },
+    { text: '    else right = mid - 1;', color: '#60a5fa' },
+    { text: '  }', color: '#fbbf24' },
+    { text: '  return -1;', color: '#64748b' },
+    { text: '}', color: '#c084fc' },
+  ],
+};
+
+const LANGUAGE_OPTIONS = [
+  { id: 'js', name: 'JavaScript', icon: '⚙️', color: '#f7df1e' },
+  { id: 'python', name: 'Python', icon: '🐍', color: '#3776ab' },
+  { id: 'java', name: 'Java', icon: '☕', color: '#007396' },
+  { id: 'cpp', name: 'C++', icon: '⬚', color: '#00599c' },
+];
+
 const TERMINAL_LINES = [
   { text: '> Running 4 test cases…',                               color: '#94a3b8' },
   { text: '  ✓  [1,3,5,7,9], target=5  →  idx 2',                color: '#4ade80' },
@@ -486,8 +550,19 @@ function CodeEditorPanel({
   isRecording: boolean;
 }) {
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const [language, setLanguage] = useState<'js' | 'python' | 'java' | 'cpp'>('js');
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const currentCode = CODE_BY_LANGUAGE[language] || CODE_LINES;
+  const langOption = LANGUAGE_OPTIONS.find(l => l.id === language)!;
 
-  return (
+  const handleLanguageChange = (newLang: 'js' | 'python' | 'java' | 'cpp') => {
+    if (newLang !== language) {
+      setLanguage(newLang);
+      setShowLangMenu(false);
+      setShowCelebration(true);
+    }
+  };
     <div
       className="flex flex-col rounded-2xl overflow-hidden h-full"
       style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
@@ -525,6 +600,51 @@ function CodeEditorPanel({
           )}
         </AnimatePresence>
 
+        {/* Language selector */}
+        <div className="relative">
+          <motion.button
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[8px] font-semibold flex-shrink-0"
+            style={{ background: `${langOption.color}15`, border: `0.5px solid ${langOption.color}40`, color: langOption.color }}
+          >
+            <span>{langOption.icon}</span>
+            <span>{langOption.name}</span>
+            <motion.span animate={{ rotate: showLangMenu ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              ▼
+            </motion.span>
+          </motion.button>
+
+          {/* Language menu dropdown */}
+          <AnimatePresence>
+            {showLangMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full mt-1 left-0 z-20 rounded-lg overflow-hidden"
+                style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.1)', minWidth: '120px' }}
+              >
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <motion.button
+                    key={lang.id}
+                    onClick={() => handleLanguageChange(lang.id as 'js' | 'python' | 'java' | 'cpp')}
+                    whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[8px] font-semibold text-left"
+                    style={{ color: lang.id === language ? lang.color : 'rgba(255,255,255,0.6)' }}
+                  >
+                    <span>{lang.icon}</span>
+                    <span>{lang.name}</span>
+                    {lang.id === language && <span className="ml-auto">✓</span>}
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-semibold" style={{ background: 'rgba(192,132,252,0.12)', color: '#c084fc' }}>
           <Eye size={8} /> Syncing
@@ -533,7 +653,7 @@ function CodeEditorPanel({
 
       {/* Code area */}
       <div className="flex-1 overflow-hidden font-mono text-[10px] p-2 leading-5" style={{ background: '#0d1117' }}>
-        {CODE_LINES.map((line, i) => (
+        {currentCode.map((line, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, x: -6 }}
@@ -655,6 +775,62 @@ function CodeEditorPanel({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Language change celebration */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+            style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.5, y: 40, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.1 }}
+              className="relative"
+            >
+              <motion.div
+                animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
+                transition={{ duration: 0.6, repeat: Infinity }}
+                className="text-6xl"
+              >
+                {langOption.icon}
+              </motion.div>
+            </motion.div>
+
+            {/* Floating particles */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  width: 6, height: 6,
+                  background: LANGUAGE_OPTIONS[i % LANGUAGE_OPTIONS.length].color,
+                  left: '50%', top: '50%',
+                }}
+                initial={{ x: 0, y: 0, opacity: 1 }}
+                animate={{
+                  x: Math.cos((i / 12) * Math.PI * 2) * 100,
+                  y: Math.sin((i / 12) * Math.PI * 2) * 100,
+                  opacity: 0,
+                }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Auto-close celebration after 1 second */}
+      {showCelebration && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          onAnimationComplete={() => setTimeout(() => setShowCelebration(false), 1000)}
+        />
+      )}
     </div>
   );
 }
