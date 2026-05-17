@@ -160,6 +160,10 @@ const CONFETTI_COLORS = [
   '#c084fc','#f472b6','#fb7185','#fbbf24','#00e676',
 ];
 
+function rand(min: number, max: number) {
+  return Math.random() * (max - min) + min;
+}
+
 function highlightCode(code: string, language: string): string {
   const keywords = {
     js: ['function', 'const', 'let', 'var', 'if', 'else', 'return', 'while', 'for'],
