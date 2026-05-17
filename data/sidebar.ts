@@ -44,6 +44,13 @@ export const sidebarItems: SidebarMenuItem[] = [
     href: '/forum',
   },
   {
+    id: 'coding-practice',
+    label: 'Coding Practice',
+    icon: 'code-2',
+    section: 'main',
+    href: '/coding-practice',
+  },
+  {
     id: 'sponsorships',
     label: 'Sponsorships',
     icon: 'handshake',
