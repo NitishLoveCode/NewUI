@@ -489,8 +489,8 @@ function CodeEditorPanel({
 
   return (
     <div
-      className="flex flex-col rounded-2xl overflow-hidden"
-      style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0, maxHeight: '600px' }}
+      className="flex flex-col rounded-2xl overflow-hidden h-full"
+      style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
     >
       {/* Editor toolbar */}
       <div
@@ -1126,7 +1126,7 @@ function CodingPracticeContent() {
 
   return (
     <div
-      className="min-h-screen px-3 py-3 flex flex-col"
+      className="h-screen px-3 py-3 flex flex-col"
       style={{ background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)' }}
     >
       {/* Steps bar - only show when not connected */}
