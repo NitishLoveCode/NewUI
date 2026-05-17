@@ -103,6 +103,7 @@ function rand(min: number, max: number) {
 
 function StepsBar({ current, onStep }: { current: number; onStep: (n: number) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
 
   return (
     <motion.div
@@ -123,7 +124,12 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
         {/* Grid: 5 steps per row */}
         <div className="grid grid-cols-5 gap-1 mb-2">
           {STEPS.map((step) => (
-            <div key={step.num} className="relative group">
+            <div
+              key={step.num}
+              className="relative"
+              onMouseEnter={() => setHoveredStep(step.num)}
+              onMouseLeave={() => setHoveredStep(null)}
+            >
               <motion.button
                 onClick={() => onStep(step.num)}
                 whileHover={{ scale: 1.12 }}
@@ -177,22 +183,27 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
               </motion.button>
 
               {/* Tooltip on hover */}
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                whileHover={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none group-hover:pointer-events-auto"
-              >
-                <div
-                  className="px-2 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap"
-                  style={{
-                    background: `linear-gradient(135deg, ${step.color}, ${step.color}dd)`,
-                    boxShadow: `0 4px 12px ${step.glow}`,
-                  }}
-                >
-                  {step.label}
-                </div>
-              </motion.div>
+              <AnimatePresence>
+                {hoveredStep === step.num && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none"
+                  >
+                    <div
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap"
+                      style={{
+                        background: `linear-gradient(135deg, ${step.color}, ${step.color}dd)`,
+                        boxShadow: `0 4px 12px ${step.glow}`,
+                      }}
+                    >
+                      {step.label}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ))}
         </div>
