@@ -159,8 +159,21 @@ const CONFETTI_COLORS = [
   '#c084fc','#f472b6','#fb7185','#fbbf24','#00e676',
 ];
 
-function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min;
+function highlightCode(code: string, language: string): string {
+  const keywords = {
+    js: ['function', 'const', 'let', 'var', 'if', 'else', 'return', 'while', 'for'],
+    python: ['def', 'return', 'if', 'else', 'while', 'for', 'import', 'from'],
+    java: ['public', 'private', 'static', 'return', 'if', 'else', 'while', 'for'],
+    cpp: ['int', 'void', 'return', 'if', 'else', 'while', 'for', 'vector'],
+  };
+
+  let highlighted = code;
+  keywords[language as keyof typeof keywords]?.forEach(kw => {
+    const regex = new RegExp(`\\b${kw}\\b`, 'g');
+    highlighted = highlighted.replace(regex, `<span style="color: #fbbf24">${kw}</span>`);
+  });
+
+  return highlighted;
 }
 
 // ─── Steps Progress Bar ───────────────────────────────────────────────────────
@@ -665,19 +678,68 @@ function CodeEditorPanel({
         </div>
       </div>
 
-      {/* Code area - Editable */}
-      <textarea
-        value={editableCode}
-        onChange={(e) => setEditableCode(e.target.value)}
-        className="flex-1 overflow-hidden font-mono text-[10px] p-2 leading-5 resize-none outline-none"
-        style={{
-          background: '#0d1117',
-          color: '#e2e8f0',
-          border: 'none',
-          fontFamily: 'Monaco, Courier New, monospace',
-        }}
-        spellCheck="false"
-      />
+      {/* Code area - Editable with Line Numbers and Syntax Highlighting */}
+      <div className="flex-1 overflow-hidden flex font-mono text-[10px] leading-5 relative" style={{ background: '#0d1117' }}>
+        {/* Line numbers */}
+        <div
+          className="flex flex-col px-2 py-2 select-none text-right flex-shrink-0 overflow-hidden"
+          style={{ background: '#0a0d1a', color: 'rgba(255,255,255,0.12)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {editableCode.split('\n').map((_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+        </div>
+
+        {/* Syntax highlighting layer (pre) */}
+        <pre
+          className="flex-1 p-2 overflow-auto"
+          style={{
+            background: '#0d1117',
+            color: '#e2e8f0',
+            margin: 0,
+            pointerEvents: 'none',
+            position: 'absolute',
+            left: '50px',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1,
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word',
+          }}
+        >
+          <code
+            dangerouslySetInnerHTML={{
+              __html: editableCode
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\b(function|const|let|var|if|else|return|while|for|def|import|from|public|private|static|int|void|vector)\b/g, '<span style="color: #fbbf24">$1</span>')
+                .replace(/(['"`])(.*?)\1/g, '<span style="color: #4ade80">$1$2$1</span>')
+                .replace(/\/\/.*/g, '<span style="color: #64748b">$&</span>')
+                .replace(/#.*/g, '<span style="color: #64748b">$&</span>')
+            }}
+          />
+        </pre>
+
+        {/* Code editor (textarea) */}
+        <textarea
+          value={editableCode}
+          onChange={(e) => setEditableCode(e.target.value)}
+          className="flex-1 p-2 resize-none outline-none relative"
+          style={{
+            background: 'transparent',
+            color: 'transparent',
+            border: 'none',
+            fontFamily: 'Monaco, Courier New, monospace',
+            caretColor: '#22d3ee',
+            position: 'relative',
+            zIndex: 2,
+            overflow: 'auto',
+            resize: 'none',
+          }}
+          spellCheck="false"
+        />
+      </div>
 
       {/* Terminal toggle + actions */}
       <div
