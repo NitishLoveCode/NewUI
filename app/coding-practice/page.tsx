@@ -1323,8 +1323,15 @@ function CodingPracticeContent() {
 
   return (
     <div
-      className="h-screen px-3 py-3 flex flex-col"
-      style={{ background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)' }}
+      className="flex flex-col"
+      style={{
+        background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
+        height: 'calc(100vh - 3.5rem)',
+        paddingLeft: '0.75rem',
+        paddingRight: '0.75rem',
+        paddingTop: '0.75rem',
+        paddingBottom: '0.75rem',
+      }}
     >
       {/* Steps bar - only show when not connected */}
       {connectionState !== 'connected' && (
