@@ -568,6 +568,7 @@ function CodeEditorPanel({
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [editableCode, setEditableCode] = useState('');
+  const [fontSize, setFontSize] = useState(10);
   const currentCode = CODE_BY_LANGUAGE[language] || CODE_LINES;
   const langOption = LANGUAGE_OPTIONS.find(l => l.id === language)!;
 
@@ -683,6 +684,42 @@ function CodeEditorPanel({
           </AnimatePresence>
         </div>
 
+        {/* Font size controls */}
+        <div className="flex items-center gap-1 px-1.5 py-1 rounded" style={{ background: 'rgba(129,140,248,0.1)', border: '0.5px solid rgba(129,140,248,0.2)' }}>
+          <motion.button
+            onClick={() => setFontSize(Math.max(8, fontSize - 1))}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex items-center justify-center text-[8px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
+            title="Decrease font size"
+          >
+            −
+          </motion.button>
+
+          <motion.span
+            className="text-[7px] font-bold w-6 text-center"
+            style={{ color: '#818cf8' }}
+            key={fontSize}
+            initial={{ scale: 1.2, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            {fontSize}
+          </motion.span>
+
+          <motion.button
+            onClick={() => setFontSize(Math.min(20, fontSize + 1))}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex items-center justify-center text-[8px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
+            title="Increase font size"
+          >
+            +
+          </motion.button>
+        </div>
+
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-semibold" style={{ background: 'rgba(192,132,252,0.12)', color: '#c084fc' }}>
           <Eye size={8} /> Syncing
@@ -699,8 +736,8 @@ function CodeEditorPanel({
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
-            fontSize: 10,
-            lineHeight: 20,
+            fontSize: fontSize,
+            lineHeight: fontSize + 10,
             wordWrap: 'on',
             scrollBeyondLastLine: false,
             automaticLayout: true,
