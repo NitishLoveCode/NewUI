@@ -72,12 +72,14 @@ export default function Navbar({
       {/* Right section: fills remaining content area (desktop only) */}
       <div className="hidden md:flex flex-1 items-center justify-between px-4 h-full">
         {/* Brand */}
+        {/* i want when click on iLoveDsa.com go back to home page. */}
         <div className="flex items-center gap-2">
           <span
-            className="text-2xl font-bold tracking-tight italic"
+            className="text-2xl font-bold tracking-tight italic cursor-pointer"
             style={{ fontFamily: 'Georgia, serif', color: '#fff' }}
+            onClick={() => window.location.href = '/'}
           >
-            Stake
+            iLoveDsa.com
           </span>
         </div>
 
