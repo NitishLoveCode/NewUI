@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Editor from '@monaco-editor/react';
 import {
   Code2, Play, Video, VideoOff, Mic, MicOff, MessageSquare,
   Send, Trophy, Zap, UserX, Wifi, Terminal, ScreenShare,
@@ -678,66 +679,23 @@ function CodeEditorPanel({
         </div>
       </div>
 
-      {/* Code area - Editable with Line Numbers and Syntax Highlighting */}
-      <div className="flex-1 overflow-hidden flex font-mono text-[10px] leading-5 relative" style={{ background: '#0d1117' }}>
-        {/* Line numbers */}
-        <div
-          className="flex flex-col px-2 py-2 select-none text-right flex-shrink-0 overflow-hidden"
-          style={{ background: '#0a0d1a', color: 'rgba(255,255,255,0.12)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          {editableCode.split('\n').map((_, i) => (
-            <div key={i}>{i + 1}</div>
-          ))}
-        </div>
-
-        {/* Syntax highlighting layer (pre) */}
-        <pre
-          className="flex-1 p-2 overflow-auto"
-          style={{
-            background: '#0d1117',
-            color: '#e2e8f0',
-            margin: 0,
-            pointerEvents: 'none',
-            position: 'absolute',
-            left: '50px',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1,
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-          }}
-        >
-          <code
-            dangerouslySetInnerHTML={{
-              __html: editableCode
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\b(function|const|let|var|if|else|return|while|for|def|import|from|public|private|static|int|void|vector)\b/g, '<span style="color: #fbbf24">$1</span>')
-                .replace(/(['"`])(.*?)\1/g, '<span style="color: #4ade80">$1$2$1</span>')
-                .replace(/\/\/.*/g, '<span style="color: #64748b">$&</span>')
-                .replace(/#.*/g, '<span style="color: #64748b">$&</span>')
-            }}
-          />
-        </pre>
-
-        {/* Code editor (textarea) */}
-        <textarea
+      {/* Code area - Monaco Editor */}
+      <div className="flex-1 overflow-hidden rounded-lg" style={{ background: '#0d1117' }}>
+        <Editor
+          height="100%"
+          language={language}
           value={editableCode}
-          onChange={(e) => setEditableCode(e.target.value)}
-          className="flex-1 p-2 resize-none outline-none relative"
-          style={{
-            background: 'transparent',
-            color: 'transparent',
-            border: 'none',
-            fontFamily: 'Monaco, Courier New, monospace',
-            caretColor: '#22d3ee',
-            position: 'relative',
-            zIndex: 2,
-            overflow: 'auto',
-            resize: 'none',
+          onChange={(value) => setEditableCode(value || '')}
+          theme="vs-dark"
+          options={{
+            minimap: { enabled: false },
+            fontSize: 10,
+            lineHeight: 20,
+            wordWrap: 'on',
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            padding: { top: 8, bottom: 8 },
           }}
-          spellCheck="false"
         />
       </div>
 
