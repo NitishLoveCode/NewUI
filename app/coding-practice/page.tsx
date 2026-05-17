@@ -825,17 +825,32 @@ function VideoCallBar({
 
       {/* Timer and Controls - Bottom Row */}
       <div className="flex items-center gap-2 w-full">
-        {/* Timer */}
-        <div
-          className="flex items-center gap-1 px-2 py-1.5 rounded-lg flex-shrink-0"
-          style={{ background: 'rgba(34,211,238,0.08)', border: '0.5px solid rgba(34,211,238,0.2)' }}
-        >
-          <Clock size={11} style={{ color: '#22d3ee' }} />
-          <span className="font-mono text-[9px] font-bold" style={{ color: '#22d3ee' }}>{fmt(elapsed)}</span>
+        {/* Left side: Timer and Recording indicator */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Timer */}
+          <div
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg"
+            style={{ background: 'rgba(34,211,238,0.08)', border: '0.5px solid rgba(34,211,238,0.2)' }}
+          >
+            <Clock size={11} style={{ color: '#22d3ee' }} />
+            <span className="font-mono text-[9px] font-bold" style={{ color: '#22d3ee' }}>{fmt(elapsed)}</span>
+          </div>
+
+          {/* Recording indicator */}
+          <AnimatePresence>
+            {isRecording && (
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '0.5px solid rgba(239,68,68,0.3)' }}>
+                <motion.div className="w-1.5 h-1.5 rounded-full bg-red-500" animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />
+                <span className="text-[8px] font-black text-red-400">REC</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-1 flex-1">
+        {/* Right side: Action buttons */}
+        <div className="flex items-center gap-1 flex-1 justify-end">
           <CtrlBtn onClick={onMute} active={isMuted} color={isMuted ? '#f87171' : '#4ade80'} icon={isMuted ? <MicOff size={11} /> : <Mic size={11} />} label="Mute" />
           <CtrlBtn onClick={onCamera} active={isCameraOff} color={isCameraOff ? '#f87171' : '#22d3ee'} icon={isCameraOff ? <VideoOff size={11} /> : <Video size={11} />} label="Cam" />
           <CtrlBtn onClick={onRecording} active={isRecording} color={isRecording ? '#f97316' : '#c084fc'} icon={isRecording ? <MonitorStop size={11} /> : <ScreenShare size={11} />} label="Rec" />
@@ -844,7 +859,7 @@ function VideoCallBar({
             onClick={onDisconnect}
             whileHover={{ scale: 1.06, boxShadow: '0 0 12px rgba(248,113,113,0.4)' }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[8px] font-bold flex-1"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[8px] font-bold"
             style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717130' }}
           >
             <PhoneOff size={10} />
@@ -852,18 +867,6 @@ function VideoCallBar({
           </motion.button>
         </div>
       </div>
-
-      {/* Recording indicator */}
-      <AnimatePresence>
-        {isRecording && (
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg w-full justify-center"
-            style={{ background: 'rgba(239,68,68,0.1)', border: '0.5px solid rgba(239,68,68,0.3)' }}>
-            <motion.div className="w-2 h-2 rounded-full bg-red-500" animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />
-            <span className="text-[8px] font-black text-red-400">REC</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
