@@ -571,6 +571,16 @@ function CodeEditorPanel({
   const currentCode = CODE_BY_LANGUAGE[language] || CODE_LINES;
   const langOption = LANGUAGE_OPTIONS.find(l => l.id === language)!;
 
+  const getMonacoLanguage = (lang: string) => {
+    const map: Record<string, string> = {
+      js: 'javascript',
+      python: 'python',
+      java: 'java',
+      cpp: 'cpp',
+    };
+    return map[lang] || 'javascript';
+  };
+
   useEffect(() => {
     setEditableCode(currentCode.map(line => line.text).join('\n'));
   }, [currentCode, language]);
@@ -683,7 +693,7 @@ function CodeEditorPanel({
       <div className="flex-1 overflow-hidden rounded-lg" style={{ background: '#0d1117' }}>
         <Editor
           height="100%"
-          language={language}
+          language={getMonacoLanguage(language)}
           value={editableCode}
           onChange={(value) => setEditableCode(value || '')}
           theme="vs-dark"
