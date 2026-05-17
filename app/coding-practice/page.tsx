@@ -553,8 +553,13 @@ function CodeEditorPanel({
   const [language, setLanguage] = useState<'js' | 'python' | 'java' | 'cpp'>('js');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [editableCode, setEditableCode] = useState('');
   const currentCode = CODE_BY_LANGUAGE[language] || CODE_LINES;
   const langOption = LANGUAGE_OPTIONS.find(l => l.id === language)!;
+
+  useEffect(() => {
+    setEditableCode(currentCode.map(line => line.text).join('\n'));
+  }, [currentCode, language]);
 
   const handleLanguageChange = (newLang: 'js' | 'python' | 'java' | 'cpp') => {
     if (newLang !== language) {
@@ -660,34 +665,19 @@ function CodeEditorPanel({
         </div>
       </div>
 
-      {/* Code area */}
-      <div className="flex-1 overflow-hidden font-mono text-[10px] p-2 leading-5" style={{ background: '#0d1117' }}>
-        {currentCode.map((line, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.03, duration: 0.2 }}
-            className="flex"
-          >
-            <span className="select-none w-5 text-right mr-2 text-[7px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
-              {i + 1}
-            </span>
-            <span style={{ color: line.color || 'transparent' }} className="whitespace-pre">
-              {line.text || '\u00A0'}
-            </span>
-          </motion.div>
-        ))}
-        <div className="flex mt-1">
-          <span className="w-5 mr-2" />
-          <motion.span
-            className="inline-block w-1 h-3 rounded-sm"
-            style={{ background: '#22d3ee' }}
-            animate={{ opacity: [1, 0, 1] }}
-            transition={{ duration: 1, repeat: Infinity }}
-          />
-        </div>
-      </div>
+      {/* Code area - Editable */}
+      <textarea
+        value={editableCode}
+        onChange={(e) => setEditableCode(e.target.value)}
+        className="flex-1 overflow-hidden font-mono text-[10px] p-2 leading-5 resize-none outline-none"
+        style={{
+          background: '#0d1117',
+          color: '#e2e8f0',
+          border: 'none',
+          fontFamily: 'Monaco, Courier New, monospace',
+        }}
+        spellCheck="false"
+      />
 
       {/* Terminal toggle + actions */}
       <div
