@@ -22,6 +22,14 @@ const STEPS = [
   { num: 6, label: 'Graph DFS',         color: '#c084fc', glow: 'rgba(192,132,252,0.5)', solved: false },
   { num: 7, label: 'DP Coins',          color: '#f472b6', glow: 'rgba(244,114,182,0.5)', solved: false },
   { num: 8, label: 'Trie Build',        color: '#fb7185', glow: 'rgba(251,113,133,0.5)', solved: false },
+  { num: 9, label: 'Two Sum',          color: '#f97316', glow: 'rgba(249,115,22,0.5)',  solved: false  },
+  { num: 10, label: 'Valid Parens',      color: '#eab308', glow: 'rgba(234,179,8,0.5)',   solved: false  },
+  { num: 11, label: 'Merge Lists',       color: '#4ade80', glow: 'rgba(74,222,128,0.5)',  solved: false  },
+  { num: 12, label: 'Binary Search',     color: '#22d3ee', glow: 'rgba(34,211,238,0.6)',  solved: false },
+  { num: 13, label: 'LRU Cache',         color: '#818cf8', glow: 'rgba(129,140,248,0.5)', solved: false },
+  { num: 14, label: 'Graph DFS',         color: '#c084fc', glow: 'rgba(192,132,252,0.5)', solved: false },
+  { num: 15, label: 'DP Coins',          color: '#f472b6', glow: 'rgba(244,114,182,0.5)', solved: false },
+  { num: 16, label: 'Trie Build',        color: '#fb7185', glow: 'rgba(251,113,133,0.5)', solved: false },
 ];
 
 const INITIAL_CHAT = [
@@ -98,73 +106,101 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative flex items-center gap-0 overflow-x-auto pb-2 mb-3"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="relative overflow-y-auto"
       ref={scrollRef}
-      style={{ scrollBehavior: 'smooth' }}
+      style={{ scrollBehavior: 'smooth', maxHeight: '100%' }}
     >
       <div
-        className="relative flex items-center gap-0 px-3 py-2 rounded-2xl flex-shrink-0"
+        className="px-2 py-2 rounded-2xl flex-shrink-0"
         style={{
           background: 'rgba(15,21,46,0.7)',
           border: '1px solid rgba(255,255,255,0.05)',
           backdropFilter: 'blur(12px)',
         }}
       >
-        {STEPS.map((step, idx) => (
-          <div key={step.num} className="flex items-center">
-            {idx > 0 && (
-              <div
-                className="w-6 h-0.5 mx-0.5 flex-shrink-0"
-                style={{
-                  background: step.num <= current
-                    ? `linear-gradient(90deg, ${STEPS[idx - 1].color}, ${step.color})`
-                    : 'rgba(255,255,255,0.06)',
-                }}
-              />
-            )}
-
-            <motion.button
-              onClick={() => onStep(step.num)}
-              whileHover={{ scale: 1.12 }}
-              whileTap={{ scale: 0.88 }}
-              className="relative flex-shrink-0 flex items-center justify-center cursor-pointer"
-              style={{ width: 36, height: 36 }}
-            >
-              {step.num === current && (
-                <motion.div
-                  className="absolute rounded-full"
-                  style={{
-                    width: 32, height: 32,
-                    border: `2px solid ${step.color}`,
-                  }}
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
-                  transition={{ duration: 1.6, repeat: Infinity }}
-                />
-              )}
-
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black relative"
+        {/* Grid: 5 steps per row */}
+        <div className="grid grid-cols-5 gap-1 mb-2">
+          {STEPS.map((step) => (
+            <div key={step.num} className="relative group">
+              <motion.button
+                onClick={() => onStep(step.num)}
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.85 }}
+                className="relative flex flex-col items-center justify-center cursor-pointer rounded-lg p-1 w-full h-full"
                 style={{
                   background: step.solved
-                    ? `linear-gradient(135deg, ${step.color}, ${step.color}99)`
+                    ? `${step.color}15`
                     : step.num === current
-                      ? `linear-gradient(135deg, ${step.color}, ${step.color}bb)`
-                      : 'rgba(255,255,255,0.04)',
-                  border: step.num === current ? `2px solid ${step.color}` : '1px solid transparent',
-                  boxShadow: step.num === current ? `0 0 12px ${step.glow}` : 'none',
-                  color: step.num <= current ? '#000' : 'rgba(255,255,255,0.2)',
+                      ? `${step.color}25`
+                      : 'rgba(255,255,255,0.02)',
+                  border: step.num === current ? `1.5px solid ${step.color}` : `0.5px solid ${step.solved ? step.color + '40' : 'transparent'}`,
+                  boxShadow: step.num === current ? `0 0 8px ${step.glow}` : 'none',
                 }}
               >
-                {step.solved ? <CheckCircle2 size={12} /> : step.num}
-              </div>
-            </motion.button>
-          </div>
-        ))}
+                {/* Pulse ring for current */}
+                {step.num === current && (
+                  <motion.div
+                    className="absolute rounded-full"
+                    style={{
+                      width: 22, height: 22,
+                      border: `1.5px solid ${step.color}`,
+                    }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.8, 0, 0.8] }}
+                    transition={{ duration: 1.6, repeat: Infinity }}
+                  />
+                )}
 
-        <div className="ml-3 pl-3 border-l border-white/10 flex items-center gap-1 flex-shrink-0">
-          <span className="text-sm font-black text-white">{current - 1}<span className="text-xs text-white/30">/8</span></span>
+                {/* Step circle */}
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black relative z-10"
+                  style={{
+                    background: step.solved
+                      ? `linear-gradient(135deg, ${step.color}, ${step.color}99)`
+                      : step.num === current
+                        ? `linear-gradient(135deg, ${step.color}, ${step.color}bb)`
+                        : 'rgba(255,255,255,0.04)',
+                    color: step.num <= current ? '#000' : 'rgba(255,255,255,0.25)',
+                  }}
+                >
+                  {step.solved ? <CheckCircle2 size={9} /> : step.num}
+                </div>
+
+                {/* Label */}
+                <span
+                  className="text-[6px] font-bold text-center leading-tight mt-0.5 whitespace-nowrap"
+                  style={{ color: step.num === current ? step.color : step.solved ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)' }}
+                >
+                  Q{step.num}
+                </span>
+              </motion.button>
+
+              {/* Tooltip on hover */}
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                whileHover={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none group-hover:pointer-events-auto"
+              >
+                <div
+                  className="px-2 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap"
+                  style={{
+                    background: `linear-gradient(135deg, ${step.color}, ${step.color}dd)`,
+                    boxShadow: `0 4px 12px ${step.glow}`,
+                  }}
+                >
+                  {step.label}
+                </div>
+              </motion.div>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress stats */}
+        <div className="pt-2 border-t border-white/10 flex flex-col items-center gap-0">
+          <span className="text-[10px] font-black text-white">{current - 1}<span className="text-[8px] text-white/30">/16</span></span>
+          <span className="text-[7px] text-white/30">Solved</span>
         </div>
       </div>
     </motion.div>
@@ -437,27 +473,27 @@ function CodeEditorPanel({
   return (
     <div
       className="flex flex-col rounded-2xl overflow-hidden"
-      style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
+      style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', minWidth: 0, maxHeight: '600px' }}
     >
       {/* Editor toolbar */}
       <div
-        className="flex items-center gap-2 px-3 py-2 border-b"
+        className="flex items-center gap-1 px-2 py-1.5 border-b"
         style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#161b22' }}
       >
         <div className="flex gap-1">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+          <div className="w-2 h-2 rounded-full bg-red-500/70" />
+          <div className="w-2 h-2 rounded-full bg-yellow-500/70" />
+          <div className="w-2 h-2 rounded-full bg-green-500/70" />
         </div>
-        <span className="text-[9px] text-white/40 ml-2 font-mono">solution.js</span>
+        <span className="text-[8px] text-white/40 ml-1 font-mono">solution.js</span>
         <div className="flex-1" />
-        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-semibold" style={{ background: 'rgba(192,132,252,0.12)', color: '#c084fc' }}>
-          <Eye size={9} /> Syncing
+        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-semibold" style={{ background: 'rgba(192,132,252,0.12)', color: '#c084fc' }}>
+          <Eye size={8} /> Syncing
         </div>
       </div>
 
       {/* Code area */}
-      <div className="flex-1 overflow-auto font-mono text-xs p-3 leading-6" style={{ background: '#0d1117' }}>
+      <div className="flex-1 overflow-auto font-mono text-[10px] p-2 leading-5" style={{ background: '#0d1117' }}>
         {CODE_LINES.map((line, i) => (
           <motion.div
             key={i}
@@ -466,7 +502,7 @@ function CodeEditorPanel({
             transition={{ delay: i * 0.03, duration: 0.2 }}
             className="flex"
           >
-            <span className="select-none w-6 text-right mr-3 text-[8px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
+            <span className="select-none w-5 text-right mr-2 text-[7px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
               {i + 1}
             </span>
             <span style={{ color: line.color || 'transparent' }} className="whitespace-pre">
@@ -475,9 +511,9 @@ function CodeEditorPanel({
           </motion.div>
         ))}
         <div className="flex mt-1">
-          <span className="w-6 mr-3" />
+          <span className="w-5 mr-2" />
           <motion.span
-            className="inline-block w-1.5 h-4 rounded-sm"
+            className="inline-block w-1 h-3 rounded-sm"
             style={{ background: '#22d3ee' }}
             animate={{ opacity: [1, 0, 1] }}
             transition={{ duration: 1, repeat: Infinity }}
@@ -487,20 +523,20 @@ function CodeEditorPanel({
 
       {/* Terminal toggle + actions */}
       <div
-        className="flex items-center gap-2 px-3 py-2 border-t"
+        className="flex items-center gap-1 px-2 py-1.5 border-t flex-wrap"
         style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#161b22' }}
       >
         <motion.button
           onClick={onToggleTerminal}
           whileHover={{ scale: 1.05 }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-semibold"
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-semibold"
           style={{
             background: showTerminal ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
             border: showTerminal ? '1px solid rgba(74,222,128,0.3)' : '1px solid transparent',
             color: showTerminal ? '#4ade80' : 'rgba(255,255,255,0.4)',
           }}
         >
-          <Terminal size={11} />
+          <Terminal size={9} />
           Console
         </motion.button>
 
@@ -511,7 +547,7 @@ function CodeEditorPanel({
           disabled={codeRunState === 'running'}
           whileHover={{ scale: 1.04, boxShadow: '0 0 15px rgba(74,222,128,0.4)' }}
           whileTap={{ scale: 0.97 }}
-          className="flex items-center gap-1.5 px-3 py-1 rounded text-[9px] font-bold"
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-bold"
           style={{
             background: codeRunState === 'running'
               ? 'rgba(74,222,128,0.2)'
@@ -522,30 +558,30 @@ function CodeEditorPanel({
         >
           {codeRunState === 'running' ? (
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-              <RefreshCw size={11} />
+              <RefreshCw size={9} />
             </motion.div>
           ) : (
-            <Play size={11} />
+            <Play size={9} />
           )}
-          {codeRunState === 'running' ? 'Running' : 'Run'}
+          Run
         </motion.button>
 
         <motion.button
           onClick={onSubmit}
           whileHover={{ scale: 1.04, boxShadow: '0 0 15px rgba(251,191,36,0.4)' }}
           whileTap={{ scale: 0.97 }}
-          className="flex items-center gap-1.5 px-3 py-1 rounded text-[9px] font-bold"
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-bold"
           style={{
             background: 'linear-gradient(135deg, #92400e, #b45309)',
             color: '#fbbf24',
             border: '1px solid #fbbf2430',
           }}
         >
-          <Trophy size={11} />
+          <Trophy size={9} />
           Submit
         </motion.button>
 
-        <span className="text-[8px] text-white/25 font-mono">JS ▼</span>
+        <span className="text-[7px] text-white/25 font-mono">JS</span>
       </div>
 
       {/* Terminal */}
@@ -557,9 +593,9 @@ function CodeEditorPanel({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t"
-            style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0a0f1a' }}
+            style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0a0f1a', maxHeight: '100px' }}
           >
-            <div className="p-2 font-mono text-[9px] space-y-0.5 max-h-32 overflow-auto">
+            <div className="p-1.5 font-mono text-[8px] space-y-0 overflow-auto">
               <AnimatePresence>
                 {terminalLines.map((line, i) => (
                   <motion.div
@@ -574,7 +610,7 @@ function CodeEditorPanel({
                 ))}
               </AnimatePresence>
               {codeRunState === 'idle' && terminalLines.length === 0 && (
-                <span className="text-white/15">Click Run to test…</span>
+                <span className="text-white/15">Click Run…</span>
               )}
             </div>
           </motion.div>
@@ -916,14 +952,14 @@ function CodeSummitAnimation({ onClose }: { onClose: () => void }) {
 
 function CollaborationArena({
   isAnonymous, isMuted, isCameraOff, isRecording, codeRunState, terminalLines, chatMessages, chatInput,
-  onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect,
+  onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, currentStep,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean;
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
   chatMessages: typeof INITIAL_CHAT; chatInput: string;
   onMute: () => void; onCamera: () => void; onRecording: () => void;
   onRunCode: () => void; onSubmit: () => void; onSendChat: () => void;
-  onChatInput: (v: string) => void; onDisconnect: () => void;
+  onChatInput: (v: string) => void; onDisconnect: () => void; currentStep: number;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
@@ -935,52 +971,60 @@ function CollaborationArena({
   }, []);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3 h-full overflow-hidden">
-      {/* Video call bar */}
-      <VideoCallBar
-        isAnonymous={isAnonymous}
-        isMuted={isMuted}
-        isCameraOff={isCameraOff}
-        isRecording={isRecording}
-        elapsed={elapsed}
-        onMute={onMute}
-        onCamera={onCamera}
-        onRecording={onRecording}
-        onDisconnect={onDisconnect}
-      />
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
+      {/* Left sidebar: Problem Statement */}
+      <div className="w-56 flex-shrink-0 overflow-y-auto">
+        <ProblemStatement />
+      </div>
 
-      {/* Main workspace - 2 columns */}
-      <div className="flex gap-3 flex-1 overflow-hidden">
-        {/* Left: Problem statement */}
-        <div className="w-48 flex-shrink-0 overflow-y-auto">
-          <ProblemStatement />
+      {/* Center: Code Editor */}
+      <div className="flex-1 overflow-hidden">
+        <CodeEditorPanel
+          codeRunState={codeRunState}
+          terminalLines={terminalLines}
+          onRun={onRunCode}
+          onSubmit={onSubmit}
+          showTerminal={showTerminal}
+          onToggleTerminal={() => setShowTerminal(!showTerminal)}
+        />
+      </div>
+
+      {/* Right column: Steps Bar + Video Call Bar + Chat (flex column) */}
+      <div className="flex flex-col gap-3 flex-shrink-0 w-60 overflow-y-auto">
+        {/* Steps bar */}
+        <div className="flex-shrink-0">
+          <StepsBar current={currentStep} onStep={() => {}} />
         </div>
 
-        {/* Center: Code editor */}
-        <div className="flex-1 overflow-hidden">
-          <CodeEditorPanel
-            codeRunState={codeRunState}
-            terminalLines={terminalLines}
-            onRun={onRunCode}
-            onSubmit={onSubmit}
-            showTerminal={showTerminal}
-            onToggleTerminal={() => setShowTerminal(!showTerminal)}
+        {/* Video call bar */}
+        <div className="flex-shrink-0">
+          <VideoCallBar
+            isAnonymous={isAnonymous}
+            isMuted={isMuted}
+            isCameraOff={isCameraOff}
+            isRecording={isRecording}
+            elapsed={elapsed}
+            onMute={onMute}
+            onCamera={onCamera}
+            onRecording={onRecording}
+            onDisconnect={onDisconnect}
           />
         </div>
 
-        {/* Right: Chat button */}
+        {/* Chat button */}
         <motion.button
           onClick={() => setChatOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="relative flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+          className="relative w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm flex-shrink-0"
           style={{
             background: 'linear-gradient(135deg, #f47bb620, #f47bb610)',
             border: '1px solid rgba(244,114,182,0.25)',
           }}
         >
-          <MessageSquare size={18} style={{ color: '#f472b6' }} />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: '#4ade80' }} />
+          <MessageSquare size={16} style={{ color: '#f472b6' }} />
+          <span style={{ color: '#f472b6' }}>Open Chat</span>
+          <span className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: '#4ade80' }} />
         </motion.button>
       </div>
 
@@ -1067,8 +1111,10 @@ function CodingPracticeContent() {
       className="min-h-screen px-3 py-3 flex flex-col"
       style={{ background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)' }}
     >
-      {/* Steps bar */}
-      <StepsBar current={currentStep} onStep={setCurrentStep} />
+      {/* Steps bar - only show when not connected */}
+      {connectionState !== 'connected' && (
+        <StepsBar current={currentStep} onStep={setCurrentStep} />
+      )}
 
       {/* Connection states */}
       <div className="flex-1 overflow-auto">
@@ -1096,6 +1142,7 @@ function CodingPracticeContent() {
                 terminalLines={terminalLines}
                 chatMessages={chatMessages}
                 chatInput={chatInput}
+                currentStep={currentStep}
                 onMute={() => setIsMuted(m => !m)}
                 onCamera={() => setIsCameraOff(c => !c)}
                 onRecording={() => setIsRecording(r => !r)}
