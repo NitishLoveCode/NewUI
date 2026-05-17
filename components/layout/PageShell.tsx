@@ -7,6 +7,7 @@ import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import MobileBottomNav from './MobileBottomNav';
 import AuthDialog from '@/components/auth/AuthDialog';
+import MusicPlayer from './MusicPlayer';
 
 export default function PageShell({ children }: { children: React.ReactNode }) {
   const { isExpanded, toggle } = useSidebar();
@@ -39,6 +40,7 @@ export default function PageShell({ children }: { children: React.ReactNode }) {
 
       <MobileBottomNav />
       <AuthDialog isOpen={authOpen} onClose={() => setAuthOpen(false)} defaultTab={authTab} />
+      <MusicPlayer />
     </div>
   );
 }
