@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { GameCard } from '@/types';
@@ -11,7 +11,6 @@ const STEP_LABELS = [
   'HOLD', 'CASCADE', 'GAMBLE', 'MAX WIN',
 ];
 
-// Visual rows: row 2 is reversed so path snakes 1→4, 4↓5, 8←5, 8↓9, 9→12
 const ROWS: number[][] = [
   [1, 2, 3, 4],
   [8, 7, 6, 5],
@@ -20,11 +19,57 @@ const ROWS: number[][] = [
 
 const NODE_START = 0.28;
 const NODE_GAP = 0.11;
-
 const nodeDelay = (step: number) => NODE_START + (step - 1) * NODE_GAP;
+
+// 12-point starburst (alternating outer r=50 / inner r=39, offset 15°)
+const STARBURST = `polygon(
+  50% 0%, 59.84% 13.29%, 75% 6.7%, 76.87% 23.13%,
+  93.3% 25%, 86.71% 40.16%, 100% 50%, 86.71% 59.84%,
+  93.3% 75%, 76.87% 76.87%, 75% 93.3%, 59.84% 86.71%,
+  50% 100%, 40.16% 86.71%, 25% 93.3%, 23.13% 76.87%,
+  6.7% 75%, 13.29% 59.84%, 0% 50%, 13.29% 40.16%,
+  6.7% 25%, 23.13% 23.13%, 25% 6.7%, 40.16% 13.29%
+)`;
+
+function CompletedBadge({ step }: { step: number }) {
+  return (
+    <motion.div
+      className="relative w-11 h-11 flex items-center justify-center"
+      initial={{ scale: 0, rotate: -180, opacity: 0 }}
+      animate={{ scale: 1, rotate: 0, opacity: 1 }}
+      exit={{ scale: 0, rotate: 180, opacity: 0, transition: { duration: 0.15 } }}
+      transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+    >
+      {/* Infinitely rotating outer starburst */}
+      <motion.div
+        className="absolute inset-0"
+        style={{ background: '#4ade80', clipPath: STARBURST }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+      />
+      {/* Static inner circle — step number stays upright */}
+      <div
+        className="relative z-10 flex items-center justify-center rounded-full"
+        style={{ width: 26, height: 26, background: '#15803d' }}
+      >
+        <span className="text-[11px] font-black text-white select-none leading-none">{step}</span>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
   const accent = game.accentColor;
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
+  const toggleStep = (step: number) => {
+    setCompletedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(step)) next.delete(step);
+      else next.add(step);
+      return next;
+    });
+  };
 
   return (
     <AnimatePresence>
@@ -100,38 +145,57 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                       const isLastInRow = colIndex === row.length - 1;
                       const adjacentStep = isReverse ? step - 1 : step + 1;
                       const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
+                      const isDone = completedSteps.has(step);
 
                       return (
                         <Fragment key={step}>
                           {/* Node + label */}
                           <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
-                            <motion.div
-                              className="relative w-11 h-11 rounded-full flex items-center justify-center"
-                              style={{
-                                background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
-                                border: `2.5px solid ${accent}`,
-                                boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
-                              }}
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                            <div
+                              className="cursor-pointer"
+                              onClick={() => toggleStep(step)}
                             >
-                              <span className="text-sm font-black select-none" style={{ color: accent }}>
-                                {step}
-                              </span>
-                              {/* Pop ring burst */}
-                              <motion.div
-                                className="absolute rounded-full pointer-events-none"
-                                style={{ inset: -4, border: `2px solid ${accent}` }}
-                                initial={{ scale: 1, opacity: 0.7 }}
-                                animate={{ scale: 1.8, opacity: 0 }}
-                                transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
-                              />
-                            </motion.div>
+                              <AnimatePresence mode="wait">
+                                {isDone ? (
+                                  <CompletedBadge key="done" step={step} />
+                                ) : (
+                                  <motion.div
+                                    key="normal"
+                                    className="relative w-11 h-11 rounded-full flex items-center justify-center"
+                                    style={{
+                                      background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
+                                      border: `2.5px solid ${accent}`,
+                                      boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                                    }}
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
+                                    transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                  >
+                                    <span className="text-sm font-black select-none" style={{ color: accent }}>
+                                      {step}
+                                    </span>
+                                    {/* Pop ring burst */}
+                                    <motion.div
+                                      className="absolute rounded-full pointer-events-none"
+                                      style={{ inset: -4, border: `2px solid ${accent}` }}
+                                      initial={{ scale: 1, opacity: 0.7 }}
+                                      animate={{ scale: 1.8, opacity: 0 }}
+                                      transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
+                                    />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
 
                             <motion.span
                               className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
-                              style={{ color: `${accent}70`, width: 44, display: 'block', letterSpacing: '0.06em' }}
+                              style={{
+                                color: isDone ? '#4ade80' : `${accent}70`,
+                                width: 44,
+                                display: 'block',
+                                letterSpacing: '0.06em',
+                              }}
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: nodeDelay(step) + 0.22 }}
@@ -214,7 +278,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
             animate={{ opacity: 1 }}
             transition={{ delay: nodeDelay(12) + 0.45 }}
           >
-            Tap anywhere to close
+            Tap a step to complete · Tap anywhere to close
           </motion.p>
         </motion.div>
       </motion.div>
