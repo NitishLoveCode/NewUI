@@ -58,6 +58,13 @@ export const sidebarItems: SidebarMenuItem[] = [
     href: '/daily-tracker',
   },
   {
+    id: 'notes',
+    label: 'Notes',
+    icon: 'book-open',
+    section: 'main',
+    href: '/notes',
+  },
+  {
     id: 'sponsorships',
     label: 'Sponsorships',
     icon: 'handshake',

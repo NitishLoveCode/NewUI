@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Gift, Trophy, Users, Crown, Newspaper, MessageSquare,
-  Handshake, Shield, Headphones, Globe, ChevronDown, Code2, Activity,
+  Handshake, Shield, Headphones, Globe, ChevronDown, Code2, Activity, BookOpen,
 } from 'lucide-react';
 import { sidebarItems } from '@/data/sidebar';
 
@@ -22,6 +22,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   globe: Globe,
   'code-2': Code2,
   activity: Activity,
+  'book-open': BookOpen,
 };
 
 interface SidebarProps {
