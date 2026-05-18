@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { motion, animate, useInView } from 'framer-motion';
 import PromoCard from './PromoCard';
 import SocialLoginButtons from './SocialLoginButtons';
-import { Users, DollarSign, Gamepad2 } from 'lucide-react';
+import { Users, Code2, BookOpen } from 'lucide-react';
 
 interface HeroSectionProps {
   onOpenAuth?: (tab: 'login' | 'register') => void;
@@ -43,9 +43,9 @@ function AnimatedCounter({
 }
 
 const stats = [
-  { icon: Users, label: 'Players Online', value: 84_320, suffix: '+' },
-  { icon: DollarSign, label: 'Won Today', value: 48_600_000, prefix: '$', suffix: '' },
-  { icon: Gamepad2, label: 'Games Available', value: 3_000, suffix: '+' },
+  { icon: Users, label: 'Active Learners', value: 84_320, suffix: '+', prefix: '' },
+  { icon: Code2, label: 'Problems Solved', value: 486_000, suffix: '+', prefix: '' },
+  { icon: BookOpen, label: 'Notes Shared', value: 3_000, suffix: '+', prefix: '' },
 ];
 
 export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
@@ -76,7 +76,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           >
             <span className="text-sm">🎁</span>
             <span className="text-xs font-semibold" style={{ color: '#00e676' }}>
-              100% Welcome Bonus up to $1,000
+              Daily DSA Sheets, Notes, and Practice Sets
             </span>
           </motion.div>
 
@@ -97,7 +97,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 backgroundClip: 'text',
               }}
             >
-              {' '}Trusted Coding
+              {' '}Trusted DSA
             </span>
             {' '}Platform
           </motion.h1>
@@ -113,7 +113,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             className="self-start px-8 py-3.5 rounded-xl text-base font-bold text-black"
             style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
           >
-            Register Now — It&apos;s Free
+            Start Learning — It&apos;s Free
           </motion.button>
 
           {/* Social login */}
@@ -164,16 +164,16 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           className="grid grid-cols-2 gap-4"
         >
           <PromoCard
-            title="Casino"
+            title="DSA"
             players={67738}
             gradient="linear-gradient(135deg, #0a3d1a 0%, #1a6b3a 50%, #2dd06e 100%)"
-            icon="🃏"
+            icon="🧠"
           />
           <PromoCard
-            title="Sports"
+            title="Notes"
             players={12506}
             gradient="linear-gradient(135deg, #0a2e1a 0%, #0f5c38 50%, #00e676 100%)"
-            icon="⚽"
+            icon="📝"
           />
           {/* Extra wide jackpot promo */}
           <div
@@ -196,9 +196,9 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             >
               <div>
                 <p className="text-xs font-semibold" style={{ color: '#00e676' }}>
-                  JACKPOT
+                  CURATED TRACK
                 </p>
-                <p className="text-lg font-black text-white">$12,450,000+</p>
+                <p className="text-lg font-black text-white">12,450+ Problems</p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.04, boxShadow: '0 0 20px rgba(0,230,118,0.45)' }}
@@ -207,7 +207,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 className="px-4 py-2 rounded-lg text-xs font-bold text-black"
                 style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
               >
-                Play Now
+                Explore Now
               </motion.button>
             </div>
           </div>
@@ -226,7 +226,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
         >
           <span className="text-sm">🎁</span>
           <span className="text-xs font-semibold" style={{ color: '#00e676' }}>
-            100% Bonus up to $1,000
+            Daily DSA Sheets, Notes, and Practice Sets
           </span>
         </div>
 
@@ -240,9 +240,9 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
               backgroundClip: 'text',
             }}
           >
-            Trusted Casino
+            Trusted DSA
           </span>{' '}
-          &amp; Sportsbook
+          Platform
         </h1>
 
         <motion.button
@@ -255,7 +255,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             boxShadow: '0 4px 24px rgba(0,230,118,0.4)',
           }}
         >
-          Register Now — It&apos;s Free
+          Start Learning — It&apos;s Free
         </motion.button>
 
         {/* Mobile stats */}
@@ -289,16 +289,16 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
 
         <div className="grid grid-cols-2 gap-3 w-full">
           <PromoCard
-            title="Casino"
+            title="DSA"
             players={67738}
             gradient="linear-gradient(135deg, #0a3d1a 0%, #1a6b3a 50%, #2dd06e 100%)"
-            icon="🃏"
+            icon="🧠"
           />
           <PromoCard
-            title="Sports"
+            title="Notes"
             players={12506}
             gradient="linear-gradient(135deg, #0a2e1a 0%, #0f5c38 50%, #00e676 100%)"
-            icon="⚽"
+            icon="📝"
           />
         </div>
       </div>

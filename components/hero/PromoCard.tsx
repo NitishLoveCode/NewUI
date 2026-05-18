@@ -34,7 +34,7 @@ export default function PromoCard({ title, players, gradient, icon }: PromoCardP
       >
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="text-xs">{title === 'Casino' ? '🎰' : '🏆'}</span>
+            <span className="text-xs">{icon}</span>
           </div>
           <span className="text-sm font-semibold text-white">{title}</span>
         </div>
