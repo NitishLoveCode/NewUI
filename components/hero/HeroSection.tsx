@@ -88,7 +88,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             className="text-3xl xl:text-4xl font-black leading-tight"
             style={{ color: '#fff' }}
           >
-            The World&apos;s Most{' '}
+            The World&apos;s Most
             <span
               style={{
                 background: 'linear-gradient(135deg, #00e676 0%, #69f0ae 60%, #b9f6ca 100%)',
@@ -97,9 +97,9 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 backgroundClip: 'text',
               }}
             >
-              Trusted Casino
-            </span>{' '}
-            &amp; Sportsbook
+              {' '}Trusted Coding
+            </span>
+            {' '}Platform
           </motion.h1>
 
           {/* Register CTA */}
