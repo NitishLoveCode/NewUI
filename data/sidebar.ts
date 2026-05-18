@@ -51,6 +51,13 @@ export const sidebarItems: SidebarMenuItem[] = [
     href: '/coding-practice',
   },
   {
+    id: 'daily-tracker',
+    label: 'Daily Tracker',
+    icon: 'activity',
+    section: 'main',
+    href: '/daily-tracker',
+  },
+  {
     id: 'sponsorships',
     label: 'Sponsorships',
     icon: 'handshake',

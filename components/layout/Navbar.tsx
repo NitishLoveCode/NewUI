@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Menu, Gamepad2 } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -73,15 +73,28 @@ export default function Navbar({
       <div className="hidden md:flex flex-1 items-center justify-between px-4 h-full">
         {/* Brand */}
         {/* i want when click on iLoveDsa.com go back to home page. */}
-        <div className="flex items-center gap-2">
-          <span
-            className="text-2xl font-bold tracking-tight italic cursor-pointer"
-            style={{ fontFamily: 'Georgia, serif', color: '#fff' }}
-            onClick={() => window.location.href = '/'}
-          >
-            iLoveDsa.com
-          </span>
-        </div>
+        <motion.div
+          className="flex items-center gap-2 cursor-pointer"
+          whileHover={{ scale: 1.05 }}
+          onClick={() => window.location.href = '/'}
+        >
+          <div className="relative">
+            <div className="absolute inset-0 rounded-lg blur-lg opacity-75"  />
+            <span
+              className="font-serif text-xl px-4 py-2 "
+              // style={{
+              //   background: 'linear-gradient(135deg, #00e676 0%, #00bcd4 25%, #9c27b0 50%, #ff1744 100%)',
+              //   WebkitBackgroundClip: 'text',
+              //   WebkitTextFillColor: 'transparent',
+              //   backgroundClip: 'text',
+              //   fontFamily: 'Georgia, serif',
+              //   filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.4))'
+              // }}
+            >
+              iLoveDsa.com
+            </span>
+          </div>
+        </motion.div>
 
         {/* Auth buttons */}
         <div className="flex items-center gap-2">
@@ -108,15 +121,27 @@ export default function Navbar({
 
       {/* Mobile: logo + auth buttons */}
       <div className="flex md:hidden items-center justify-between w-full px-4">
-        <div className="flex items-center gap-2">
-          <Gamepad2 size={22} className="text-white" />
-          <span
-            className="text-2xl font-bold tracking-tight italic"
-            style={{ fontFamily: 'Georgia, serif', color: '#fff' }}
-          >
-            Stake
-          </span>
-        </div>
+        <motion.div
+          className="flex items-center gap-2 cursor-pointer"
+          whileHover={{ scale: 1.05 }}
+          onClick={() => window.location.href = '/'}
+        >
+          <div className="relative">
+            <span
+              className="text-xl font-black tracking-tight italic"
+              style={{
+                background: 'linear-gradient(135deg, #00e676 0%, #00bcd4 25%, #9c27b0 50%, #ff1744 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontFamily: 'Georgia, serif',
+                filter: 'drop-shadow(0 0 6px rgba(0,230,118,0.4))'
+              }}
+            >
+              iLoveDsa
+            </span>
+          </div>
+        </motion.div>
         <div className="flex items-center gap-2">
           <motion.button
             whileHover={{ scale: 1.03 }}
