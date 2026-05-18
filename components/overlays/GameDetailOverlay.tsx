@@ -1,335 +1,221 @@
 'use client';
 
+import { Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Zap, TrendingUp, Star, Trophy, Clock } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { GameCard } from '@/types';
 
-const gameExtras: Record<string, {
-  rtp: string;
-  volatility: string;
-  minBet: string;
-  maxWin: string;
-  description: string;
-  tags: string[];
-}> = {
-  '1': {
-    rtp: '96.5%', volatility: 'High', minBet: '$0.20', maxWin: '20,000x',
-    description: 'Journey to Mount Olympus and spin alongside Zeus himself. Epic multipliers cascade through divine reels in this legendary title.',
-    tags: ['Megaways', 'Jackpot', 'Free Spins'],
-  },
-  '2': {
-    rtp: '96.4%', volatility: 'High', minBet: '$0.20', maxWin: '20,000x',
-    description: 'A sugary sweet adventure through a candy-coated world of cluster pays and explosive multipliers.',
-    tags: ['Cluster Pays', 'Buy Feature', 'Cascading'],
-  },
-  '3': {
-    rtp: '96.5%', volatility: 'High', minBet: '$0.20', maxWin: '21,175x',
-    description: 'The classic made legendary. Sweet wins cascade in this fan-favorite filled with fruity fortune and divine multipliers.',
-    tags: ['All-Ways', 'Tumbling', 'Multiplier'],
-  },
-  '4': {
-    rtp: '96.5%', volatility: 'Very High', minBet: '$0.20', maxWin: '25,000x',
-    description: 'The gods scatter their riches. Super Scatter mechanics deliver divine payouts across every spin.',
-    tags: ['Scatter Pays', 'Free Spins', 'Multiplier'],
-  },
-  '5': {
-    rtp: '96.4%', volatility: 'High', minBet: '$0.20', maxWin: '12,305x',
-    description: 'Ride into the Wild West where outlaws and riches await. Sticky wilds and blazing free spins ignite at every turn.',
-    tags: ['Wild West', 'Sticky Wilds', 'Free Spins'],
-  },
-  '6': {
-    rtp: '96.5%', volatility: 'High', minBet: '$0.20', maxWin: '20,000x',
-    description: 'A sweeter spin on the classic Bonanza formula with even bigger wins and more excitement inside.',
-    tags: ['Cluster Pays', 'Buy Feature', 'Cascading'],
-  },
-  '7': {
-    rtp: '96.5%', volatility: 'Medium', minBet: '$0.20', maxWin: '5,000x',
-    description: "Step into Mr Null's peculiar shop of wonders where every item on the shelf hides a surprise jackpot.",
-    tags: ['Mystery', 'Hold & Win', 'Bonus Buy'],
-  },
-  '8': {
-    rtp: '96.2%', volatility: 'High', minBet: '$0.20', maxWin: '10,000x',
-    description: 'Descend into the halls of Athena where ancient Greek riches lie hidden in divine megaways reels.',
-    tags: ['Megaways', 'Mythical', 'Free Spins'],
-  },
-};
+const STEP_LABELS = [
+  'START', 'SPIN', '2×', 'WILD',
+  '3×', 'BONUS', 'JACKPOT', 'RE-SPIN',
+  'HOLD', 'CASCADE', 'GAMBLE', 'MAX WIN',
+];
 
-const defaultExtras = {
-  rtp: '96.5%', volatility: 'High', minBet: '$0.20', maxWin: '15,000x',
-  description: 'An epic slot experience with massive win potential and stunning visuals awaiting every spin.',
-  tags: ['Slots', 'Bonus', 'Free Spins'],
-};
+// Visual rows: row 2 is reversed so path snakes 1→4, 4↓5, 8←5, 8↓9, 9→12
+const ROWS: number[][] = [
+  [1, 2, 3, 4],
+  [8, 7, 6, 5],
+  [9, 10, 11, 12],
+];
 
-// How far apart each step reveals (seconds)
-const STEP_GAP = 0.11;
-// When the first step starts appearing
-const STEP_START = 0.42;
+const NODE_START = 0.28;
+const NODE_GAP = 0.11;
+
+const nodeDelay = (step: number) => NODE_START + (step - 1) * NODE_GAP;
 
 export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
-  const extras = gameExtras[game.id] ?? defaultExtras;
-
-  const steps = [
-    { label: 'Provider',         value: game.provider,                   Icon: Star        },
-    { label: 'Return to Player', value: extras.rtp,                      Icon: TrendingUp  },
-    { label: 'Volatility',       value: extras.volatility,               Icon: Zap         },
-    { label: 'Min Bet',          value: extras.minBet,                   Icon: Clock       },
-    { label: 'Max Win',          value: extras.maxWin,                   Icon: Trophy      },
-    { label: 'Players Live',     value: `${game.playing.toLocaleString()} now`, Icon: Users },
-  ];
-
-  const afterSteps = STEP_START + steps.length * STEP_GAP;
+  const accent = game.accentColor;
 
   return (
     <AnimatePresence>
-      {/* ── Backdrop ── */}
       <motion.div
         key="gdo-backdrop"
         className="fixed inset-0 z-[60]"
-        style={{ background: 'rgba(4,12,22,0.90)', backdropFilter: 'blur(12px)' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        style={{ background: 'rgba(4,12,22,0.92)', backdropFilter: 'blur(14px)' }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ duration: 0.22 }}
         onClick={onClose}
       />
 
-      {/* ── Panel ── */}
       <motion.div
         key="gdo-panel"
-        className="fixed z-[61] inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center pointer-events-none"
+        className="fixed z-[61] inset-0 flex items-center justify-center pointer-events-none px-4"
       >
         <motion.div
-          className="pointer-events-auto w-full md:w-[460px] rounded-t-[30px] md:rounded-[30px] overflow-hidden flex flex-col"
+          className="pointer-events-auto w-full max-w-[480px] rounded-3xl p-6"
           style={{
-            background: '#0b1824',
-            maxHeight: '92vh',
-            boxShadow: `0 0 80px ${game.accentColor}26, 0 32px 90px rgba(0,0,0,0.65)`,
+            background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
+            boxShadow: `0 0 70px ${accent}22, 0 28px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+            border: `1px solid rgba(255,255,255,0.07)`,
           }}
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 27, stiffness: 280, delay: 0.04 }}
+          initial={{ scale: 0.88, opacity: 0, y: 24 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.88, opacity: 0, y: 24 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 300, delay: 0.06 }}
           onClick={e => e.stopPropagation()}
         >
-          {/* ── Hero ── */}
-          <motion.div
-            className="relative flex-shrink-0 h-52 md:h-60"
-            style={{ background: game.gradient }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.08, duration: 0.5 }}
-          >
-            {/* Bottom fade into body */}
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(to bottom, transparent 30%, #0b1824 100%)' }}
-            />
-
-            {/* Glow orb */}
-            <motion.div
-              className="absolute -top-6 -right-6 w-36 h-36 rounded-full"
-              style={{ background: game.accentColor, filter: 'blur(48px)', opacity: 0.22 }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.18, duration: 0.75 }}
-            />
-
-            {/* LIVE badge */}
-            <motion.div
-              className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{
-                background: 'rgba(0,0,0,0.48)',
-                backdropFilter: 'blur(8px)',
-                border: `1px solid ${game.accentColor}45`,
-              }}
-              initial={{ opacity: 0, x: -18 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.22, duration: 0.32 }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full animate-pulse inline-block"
-                style={{ background: '#00e676', boxShadow: '0 0 6px #00e676' }}
-              />
-              <span className="text-[10px] font-bold tracking-widest" style={{ color: '#00e676' }}>
-                LIVE
-              </span>
-            </motion.div>
-
-            {/* Close button */}
-            <motion.button
-              className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(0,0,0,0.44)', backdropFilter: 'blur(6px)' }}
-              initial={{ opacity: 0, scale: 0.4 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.14, type: 'spring', stiffness: 320 }}
-              whileHover={{ scale: 1.12 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-            >
-              <X size={15} color="white" />
-            </motion.button>
-
-            {/* Title */}
-            <div className="absolute bottom-4 left-5 right-5">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-7">
+            <div>
               <motion.h2
-                className="text-[22px] md:text-2xl font-black text-white uppercase leading-tight"
-                style={{ textShadow: '0 2px 14px rgba(0,0,0,0.8)' }}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.26, duration: 0.42, ease: 'easeOut' }}
+                className="text-base font-black text-white uppercase tracking-wide leading-tight"
+                initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.18 }}
               >
                 {game.title.replace(/\n/g, ' ')}
               </motion.h2>
-            </div>
-          </motion.div>
-
-          {/* ── Scrollable body ── */}
-          <div className="overflow-y-auto flex-1 px-5 pb-8 pt-3">
-
-            {/* Tags */}
-            <motion.div
-              className="flex gap-2 flex-wrap mb-5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.36 }}
-            >
-              {extras.tags.map((tag, i) => (
-                <motion.span
-                  key={tag}
-                  className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
-                  style={{
-                    background: `${game.accentColor}16`,
-                    color: game.accentColor,
-                    border: `1px solid ${game.accentColor}38`,
-                  }}
-                  initial={{ opacity: 0, scale: 0.75 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.36 + i * 0.07, type: 'spring', stiffness: 350 }}
-                >
-                  {tag}
-                </motion.span>
-              ))}
-            </motion.div>
-
-            {/* ── Step timeline ── */}
-            <div className="relative pl-1">
-
-              {/* Vertical timeline line drawing down */}
-              <motion.div
-                className="absolute left-[14px] top-3 w-px origin-top"
-                style={{
-                  background: `linear-gradient(to bottom, ${game.accentColor}70, ${game.accentColor}08)`,
-                  height: `calc(100% - 12px)`,
-                }}
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{
-                  delay: STEP_START,
-                  duration: steps.length * STEP_GAP + 0.5,
-                  ease: 'easeOut',
-                }}
-              />
-
-              {steps.map((step, i) => {
-                const delay = STEP_START + i * STEP_GAP;
-                const { Icon } = step;
-                return (
-                  <motion.div
-                    key={step.label}
-                    className="flex items-center gap-3.5 py-[11px] relative"
-                    initial={{ opacity: 0, x: 28 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay, duration: 0.32, ease: 'easeOut' }}
-                  >
-                    {/* Step node */}
-                    <motion.div
-                      className="w-[28px] h-[28px] rounded-full flex items-center justify-center flex-shrink-0 relative z-10"
-                      style={{
-                        background: `${game.accentColor}1a`,
-                        border: `1px solid ${game.accentColor}48`,
-                        boxShadow: `0 0 10px ${game.accentColor}14`,
-                      }}
-                      initial={{ scale: 0, rotate: -45 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ delay: delay + 0.04, type: 'spring', stiffness: 420, damping: 18 }}
-                    >
-                      <Icon size={12} color={game.accentColor} />
-                    </motion.div>
-
-                    {/* Label + value row */}
-                    <div className="flex-1 flex items-center justify-between gap-2">
-                      <span className="text-[13px]" style={{ color: '#6b7f91' }}>
-                        {step.label}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold text-white">
-                          {step.value}
-                        </span>
-                        {/* Accent tick that draws in after the row */}
-                        <motion.div
-                          className="h-[2px] rounded-full"
-                          style={{ background: game.accentColor, width: 18 }}
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ delay: delay + 0.18, duration: 0.22 }}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Separator */}
-            <motion.div
-              className="h-px my-4 origin-left"
-              style={{ background: 'rgba(255,255,255,0.07)' }}
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ delay: afterSteps + 0.06, duration: 0.45 }}
-            />
-
-            {/* Description */}
-            <motion.p
-              className="text-[13px] leading-relaxed mb-6"
-              style={{ color: '#6b7f91' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: afterSteps + 0.16 }}
-            >
-              {extras.description}
-            </motion.p>
-
-            {/* CTA buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <motion.button
-                className="py-3.5 rounded-2xl font-black text-sm uppercase tracking-wide"
-                style={{ background: game.accentColor, color: '#071018' }}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: afterSteps + 0.26, duration: 0.32 }}
-                whileHover={{ scale: 1.03, boxShadow: `0 0 32px ${game.accentColor}55` }}
-                whileTap={{ scale: 0.97 }}
+              <motion.p
+                className="text-[10px] mt-1 font-bold uppercase tracking-[0.2em]"
+                style={{ color: accent }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                transition={{ delay: 0.24 }}
               >
-                Play Now
-              </motion.button>
-              <motion.button
-                className="py-3.5 rounded-2xl font-bold text-sm uppercase tracking-wide"
-                style={{
-                  background: 'transparent',
-                  color: '#9aaab8',
-                  border: '1px solid rgba(255,255,255,0.11)',
-                }}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: afterSteps + 0.36, duration: 0.32 }}
-                whileHover={{ scale: 1.03, borderColor: 'rgba(255,255,255,0.26)' }}
-                whileTap={{ scale: 0.97 }}
-              >
-                Try Demo
-              </motion.button>
+                Win Journey · 12 Steps
+              </motion.p>
             </div>
+            <motion.button
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-3"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.16, type: 'spring', stiffness: 340 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onClose}
+            >
+              <X size={13} color="white" />
+            </motion.button>
           </div>
+
+          {/* Zig-zag snake path */}
+          <div>
+            {ROWS.map((row, rowIndex) => {
+              const isReverse = rowIndex % 2 === 1;
+
+              return (
+                <Fragment key={rowIndex}>
+                  {/* Row of nodes + bars */}
+                  <div className="flex items-start">
+                    {row.map((step, colIndex) => {
+                      const isLastInRow = colIndex === row.length - 1;
+                      const adjacentStep = isReverse ? step - 1 : step + 1;
+                      const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
+
+                      return (
+                        <Fragment key={step}>
+                          {/* Node + label */}
+                          <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
+                            <motion.div
+                              className="relative w-11 h-11 rounded-full flex items-center justify-center"
+                              style={{
+                                background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
+                                border: `2.5px solid ${accent}`,
+                                boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                              }}
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                            >
+                              <span className="text-sm font-black select-none" style={{ color: accent }}>
+                                {step}
+                              </span>
+                              {/* Pop ring burst */}
+                              <motion.div
+                                className="absolute rounded-full pointer-events-none"
+                                style={{ inset: -4, border: `2px solid ${accent}` }}
+                                initial={{ scale: 1, opacity: 0.7 }}
+                                animate={{ scale: 1.8, opacity: 0 }}
+                                transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
+                              />
+                            </motion.div>
+
+                            <motion.span
+                              className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
+                              style={{ color: `${accent}70`, width: 44, display: 'block', letterSpacing: '0.06em' }}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: nodeDelay(step) + 0.22 }}
+                            >
+                              {STEP_LABELS[step - 1]}
+                            </motion.span>
+                          </div>
+
+                          {/* Connecting bar */}
+                          {!isLastInRow && (
+                            <div className="flex-1 relative" style={{ paddingTop: 16 }}>
+                              {/* Track (dim background) */}
+                              <div
+                                className="h-[11px] w-full rounded-sm"
+                                style={{ background: `${accent}12` }}
+                              />
+                              {/* Animated fill */}
+                              <motion.div
+                                className="absolute left-0 right-0 h-[11px] rounded-sm"
+                                style={{
+                                  top: 16,
+                                  background: `linear-gradient(90deg, ${accent}, ${accent}bb)`,
+                                  boxShadow: `0 0 12px ${accent}66, 0 2px 6px rgba(0,0,0,0.45)`,
+                                  transformOrigin: isReverse ? 'right center' : 'left center',
+                                }}
+                                initial={{ scaleX: 0 }}
+                                animate={{ scaleX: 1 }}
+                                transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
+                              />
+                            </div>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+
+                  {/* Vertical connector between rows */}
+                  {rowIndex < ROWS.length - 1 && (() => {
+                    const isRight = rowIndex % 2 === 0;
+                    const connDelay = nodeDelay(isRight ? 5 : 9) + 0.08;
+
+                    return (
+                      <div
+                        className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
+                        style={{ height: 26 }}
+                      >
+                        <div className="relative" style={{ width: 44 }}>
+                          {/* Track */}
+                          <div
+                            className="absolute rounded-sm"
+                            style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: `${accent}12` }}
+                          />
+                          {/* Fill */}
+                          <motion.div
+                            className="absolute rounded-sm origin-top"
+                            style={{
+                              left: '50%', transform: 'translateX(-50%)',
+                              width: 11, top: 0, bottom: 0,
+                              background: `linear-gradient(180deg, ${accent}, ${accent}bb)`,
+                              boxShadow: `0 0 12px ${accent}66`,
+                            }}
+                            initial={{ scaleY: 0 }}
+                            animate={{ scaleY: 1 }}
+                            transition={{ delay: connDelay, duration: 0.18, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </Fragment>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <motion.p
+            className="text-center text-[10px] mt-6 font-medium tracking-widest uppercase"
+            style={{ color: 'rgba(255,255,255,0.18)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: nodeDelay(12) + 0.45 }}
+          >
+            Tap anywhere to close
+          </motion.p>
         </motion.div>
       </motion.div>
     </AnimatePresence>
