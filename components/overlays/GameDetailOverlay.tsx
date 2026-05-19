@@ -205,28 +205,35 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                           </div>
 
                           {/* Connecting bar */}
-                          {!isLastInRow && (
-                            <div className="flex-1 relative" style={{ paddingTop: 16 }}>
-                              {/* Track (dim background) */}
-                              <div
-                                className="h-[11px] w-full rounded-sm"
-                                style={{ background: `${accent}12` }}
-                              />
-                              {/* Animated fill */}
-                              <motion.div
-                                className="absolute left-0 right-0 h-[11px] rounded-sm"
-                                style={{
-                                  top: 16,
-                                  background: `linear-gradient(90deg, ${accent}, ${accent}bb)`,
-                                  boxShadow: `0 0 12px ${accent}66, 0 2px 6px rgba(0,0,0,0.45)`,
-                                  transformOrigin: isReverse ? 'right center' : 'left center',
-                                }}
-                                initial={{ scaleX: 0 }}
-                                animate={{ scaleX: 1 }}
-                                transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
-                              />
-                            </div>
-                          )}
+                          {!isLastInRow && (() => {
+                            const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
+                            return (
+                              <div className="flex-1 relative" style={{ paddingTop: 16 }}>
+                                {/* Track (dim background) */}
+                                <div
+                                  className="h-[11px] w-full rounded-sm"
+                                  style={{ background: barIsComplete ? '#4ade8020' : `${accent}12` }}
+                                />
+                                {/* Animated fill */}
+                                <motion.div
+                                  className="absolute left-0 right-0 h-[11px] rounded-sm"
+                                  style={{
+                                    top: 16,
+                                    background: barIsComplete
+                                      ? `linear-gradient(90deg, #4ade80, #4ade8099)`
+                                      : `linear-gradient(90deg, ${accent}, ${accent}bb)`,
+                                    boxShadow: barIsComplete
+                                      ? `0 0 12px #4ade8066, 0 2px 6px rgba(0,0,0,0.45)`
+                                      : `0 0 12px ${accent}66, 0 2px 6px rgba(0,0,0,0.45)`,
+                                    transformOrigin: isReverse ? 'right center' : 'left center',
+                                  }}
+                                  initial={{ scaleX: 0 }}
+                                  animate={{ scaleX: 1 }}
+                                  transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
+                                />
+                              </div>
+                            );
+                          })()}
                         </Fragment>
                       );
                     })}
@@ -236,6 +243,11 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                   {rowIndex < ROWS.length - 1 && (() => {
                     const isRight = rowIndex % 2 === 0;
                     const connDelay = nodeDelay(isRight ? 5 : 9) + 0.08;
+                    const currentRow = ROWS[rowIndex];
+                    const nextRow = ROWS[rowIndex + 1];
+                    const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
+                    const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
+                    const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
 
                     return (
                       <div
@@ -246,7 +258,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                           {/* Track */}
                           <div
                             className="absolute rounded-sm"
-                            style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: `${accent}12` }}
+                            style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${accent}12` }}
                           />
                           {/* Fill */}
                           <motion.div
@@ -254,8 +266,12 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                             style={{
                               left: '50%', transform: 'translateX(-50%)',
                               width: 11, top: 0, bottom: 0,
-                              background: `linear-gradient(180deg, ${accent}, ${accent}bb)`,
-                              boxShadow: `0 0 12px ${accent}66`,
+                              background: verticalIsComplete
+                                ? `linear-gradient(180deg, #4ade80, #4ade8099)`
+                                : `linear-gradient(180deg, ${accent}, ${accent}bb)`,
+                              boxShadow: verticalIsComplete
+                                ? `0 0 12px #4ade8066`
+                                : `0 0 12px ${accent}66`,
                             }}
                             initial={{ scaleY: 0 }}
                             animate={{ scaleY: 1 }}
