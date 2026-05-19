@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Gift, Clock, Zap, Star, Trophy, Flame, ChevronRight, Sparkles } from 'lucide-react';
+import { Gift, Clock, Zap, Star, Trophy, Flame, ChevronRight, Sparkles, BookOpen, Play } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
+import { promoToLearning } from '@/data/learning';
+import GameDetailFullscreen from '@/components/overlays/GameDetailFullscreen';
 
 const promos = [
   {
@@ -119,7 +122,15 @@ function TimerBlock({ value, label }: { value: number; label: string }) {
   );
 }
 
-function PromoCard({ promo, index }: { promo: typeof promos[0]; index: number }) {
+function PromoCard({ promo, index, onPlay }: { promo: typeof promos[0]; index: number; onPlay: () => void }) {
+  const router = useRouter();
+  const learningSlug = promoToLearning[promo.id];
+
+  function handleLearnClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (learningSlug) router.push(`/learning/${learningSlug}`);
+  }
+
   return (
     <motion.div
       custom={index}
@@ -192,16 +203,48 @@ function PromoCard({ promo, index }: { promo: typeof promos[0]; index: number })
           </div>
         </div>
 
-        {/* CTA */}
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="w-full py-2.5 rounded-xl text-sm font-bold text-black flex items-center justify-center gap-1.5"
-          style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}
-        >
-          {promo.cta}
-          <ChevronRight size={14} />
-        </motion.button>
+        {/* CTA row */}
+        <div className="flex gap-2 mb-2">
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-black flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}
+          >
+            {promo.cta}
+            <ChevronRight size={14} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.08, boxShadow: `0 0 18px ${promo.badgeColor}80` }}
+            whileTap={{ scale: 0.94 }}
+            onClick={(e) => { e.stopPropagation(); onPlay(); }}
+            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: `${promo.badgeColor}22`,
+              border: `1.5px solid ${promo.badgeColor}55`,
+            }}
+          >
+            <Play size={15} fill={promo.badgeColor} color={promo.badgeColor} />
+          </motion.button>
+        </div>
+
+        {/* Learn button */}
+        {learningSlug && (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLearnClick}
+            className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5"
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.35)',
+              color: 'rgba(255,255,255,0.85)',
+              border: '1px solid rgba(255,255,255,0.18)',
+            }}
+          >
+            <BookOpen size={14} />
+            Start Learning
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -209,11 +252,20 @@ function PromoCard({ promo, index }: { promo: typeof promos[0]; index: number })
 
 function PromotionsContent() {
   const [activeTab, setActiveTab] = useState('All');
+  const [selectedPromo, setSelectedPromo] = useState<typeof promos[0] | null>(null);
 
   const filtered = activeTab === 'All' ? promos : promos.filter(p => p.category === activeTab);
 
   return (
-    <div className="px-6 py-8 max-w-[1400px]">
+    <>
+      {selectedPromo && (
+        <GameDetailFullscreen
+          key={selectedPromo.id}
+          promo={selectedPromo}
+          onClose={() => setSelectedPromo(null)}
+        />
+      )}
+      <div className="px-6 py-8 max-w-[1400px]">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}
@@ -316,7 +368,7 @@ function PromotionsContent() {
       {/* Promo cards grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map((promo, i) => (
-          <PromoCard key={promo.id} promo={promo} index={i} />
+          <PromoCard key={promo.id} promo={promo} index={i} onPlay={() => setSelectedPromo(promo)} />
         ))}
       </div>
 
@@ -348,6 +400,7 @@ function PromotionsContent() {
       </motion.div>
       <div className="h-10" />
     </div>
+    </>
   );
 }
 
