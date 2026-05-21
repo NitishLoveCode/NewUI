@@ -43,9 +43,9 @@ export default function HomePage() {
         initial={false}
         animate={{ paddingLeft: sidebarWidth }}
         transition={{ duration: 0.22, ease: 'easeInOut' }}
-        className="hidden md:block pt-14"
+        className="hidden md:flex justify-center pt-14"
       >
-        <div className="px-6 py-6 max-w-[1400px] space-y-8">
+        <div className="mx-auto flex w-full max-w-350 flex-col items-center justify-center space-y-8 p-6">
           <HeroSection onOpenAuth={openAuth} />
           <SearchBar />
           <LiveWinsTicker />
