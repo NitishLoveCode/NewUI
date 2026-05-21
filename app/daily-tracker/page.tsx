@@ -196,6 +196,8 @@ function DailyTrackerContent() {
                     const isToday = dateToStr(date) === dateToStr(now);
                     const value = data[habit.id as keyof DayData];
                     const isBoolean = typeof value === 'boolean';
+                    const numericValue = typeof value === 'number' ? value : 0;
+                    const goal = typeof habit.goal === 'number' ? habit.goal : 0;
 
                     let cellBg = 'rgba(255,255,255,0.04)';
                     let cellColor = '#b1bad3';
@@ -204,7 +206,7 @@ function DailyTrackerContent() {
                       cellBg = value ? 'rgba(0,230,118,0.2)' : 'rgba(255,255,255,0.04)';
                       cellColor = value ? '#00e676' : '#718096';
                     } else {
-                      const percent = value / (habit.id === 'money' ? habit.goal : habit.goal);
+                      const percent = goal > 0 ? numericValue / goal : 0;
                       if (percent >= 1) {
                         cellBg = 'rgba(0,230,118,0.2)';
                         cellColor = '#00e676';
@@ -214,7 +216,7 @@ function DailyTrackerContent() {
                       } else if (percent >= 0.3) {
                         cellBg = 'rgba(255,165,2,0.15)';
                         cellColor = '#ffa502';
-                      } else if (value > 0) {
+                      } else if (numericValue > 0) {
                         cellBg = 'rgba(255,107,53,0.15)';
                         cellColor = '#ff6b35';
                       }
