@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSidebar } from '@/hooks/useSidebar';
+import { useUser } from '@/hooks/useUser';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -15,6 +16,7 @@ import { motion } from 'framer-motion';
 
 export default function HomePage() {
   const { isExpanded, toggle } = useSidebar();
+  const { user, loading } = useUser();
   const sidebarWidth = isExpanded ? 260 : 68;
 
   const [authOpen, setAuthOpen] = useState(false);
@@ -25,6 +27,8 @@ export default function HomePage() {
     setAuthOpen(true);
   }
 
+  console.log('Current User:', user); // Check console to see user data
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0f212e', color: '#fff' }}>
       {/* Top Navbar */}
@@ -32,7 +36,7 @@ export default function HomePage() {
         onToggleSidebar={toggle}
         isSidebarExpanded={isExpanded}
         sidebarWidth={sidebarWidth}
-        onOpenAuth={openAuth}
+        onOpenAuth={user ? undefined : openAuth}
       />
 
       {/* Sidebar (desktop only) */}
@@ -72,12 +76,14 @@ export default function HomePage() {
       {/* Mobile bottom nav */}
       <MobileBottomNav />
 
-      {/* Auth Dialog */}
-      <AuthDialog
-        isOpen={authOpen}
-        onClose={() => setAuthOpen(false)}
-        defaultTab={authTab}
-      />
+      {/* Auth Dialog - only show if not logged in */}
+      {!user && (
+        <AuthDialog
+          isOpen={authOpen}
+          onClose={() => setAuthOpen(false)}
+          defaultTab={authTab}
+        />
+      )}
     </div>
   );
 }
