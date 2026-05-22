@@ -1,8 +1,29 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 
 export default function SocialLoginButtons() {
+  const [loading, setLoading] = useState(false);
+  const supabase = createClient();
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLoading(false);
+    }
+  };
+
   const buttons = [
     {
       label: 'Google',
@@ -14,6 +35,7 @@ export default function SocialLoginButtons() {
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
         </svg>
       ),
+      onClick: handleGoogleSignIn,
     },
     {
       label: 'Facebook',
@@ -22,6 +44,7 @@ export default function SocialLoginButtons() {
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
       ),
+      onClick: () => console.log('Facebook coming soon'),
     },
     {
       label: 'Kick',
@@ -30,6 +53,7 @@ export default function SocialLoginButtons() {
           K
         </span>
       ),
+      onClick: () => console.log('Kick coming soon'),
     },
   ];
 
@@ -40,11 +64,15 @@ export default function SocialLoginButtons() {
           key={btn.label}
           whileHover={{ scale: 1.04, backgroundColor: 'rgba(47,69,83,0.9)' }}
           whileTap={{ scale: 0.96 }}
-          className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm text-white"
+          onClick={btn.onClick}
+          disabled={loading && btn.label === 'Google'}
+          className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm text-white disabled:opacity-50"
           style={{ backgroundColor: '#2f4553', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           {btn.icon}
-          <span className="hidden sm:inline">{btn.label}</span>
+          <span className="hidden sm:inline">
+            {loading && btn.label === 'Google' ? 'Signing in...' : btn.label}
+          </span>
         </motion.button>
       ))}
     </div>
