@@ -1,0 +1,80 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="arrayGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF6347;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrayGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFF00;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#arrayGradient)"/>
+
+  <!-- Energy waves -->
+  <circle cx="200" cy="250" r="180" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.3"/>
+  <circle cx="200" cy="250" r="120" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.5"/>
+
+  <!-- Glowing array indices -->
+  <g id="arrayBoxes">
+    <!-- Index 0 -->
+    <rect x="50" y="150" width="50" height="50" fill="#00D4FF" rx="8"/>
+    <text x="75" y="185" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">0</text>
+    <circle cx="75" cy="175" r="35" fill="none" stroke="#00D4FF" stroke-width="2" opacity="0.6"/>
+
+    <!-- Index 1 -->
+    <rect x="120" y="120" width="50" height="50" fill="#00FF88" rx="8"/>
+    <text x="145" y="155" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">1</text>
+    <circle cx="145" cy="145" r="35" fill="none" stroke="#00FF88" stroke-width="2" opacity="0.6"/>
+
+    <!-- Index 2 -->
+    <rect x="190" y="100" width="50" height="50" fill="#FF00FF" rx="8"/>
+    <text x="215" y="135" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">2</text>
+    <circle cx="215" cy="125" r="35" fill="none" stroke="#FF00FF" stroke-width="2" opacity="0.6"/>
+
+    <!-- Index 3 -->
+    <rect x="260" y="120" width="50" height="50" fill="#00D4FF" rx="8"/>
+    <text x="285" y="155" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">3</text>
+    <circle cx="285" cy="145" r="35" fill="none" stroke="#00D4FF" stroke-width="2" opacity="0.6"/>
+
+    <!-- Index 4 -->
+    <rect x="330" y="150" width="50" height="50" fill="#00FF88" rx="8"/>
+    <text x="355" y="185" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">4</text>
+    <circle cx="355" cy="175" r="35" fill="none" stroke="#00FF88" stroke-width="2" opacity="0.6"/>
+  </g>
+
+  <!-- Connecting lines -->
+  <line x1="75" y1="200" x2="145" y2="170" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  <line x1="145" y1="170" x2="215" y2="150" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  <line x1="215" y1="150" x2="285" y2="170" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  <line x1="285" y1="170" x2="355" y2="200" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+
+  <!-- Warrior figure (simplified) -->
+  <circle cx="200" cy="350" r="25" fill="#00D4FF" opacity="0.8"/>
+  <!-- Head -->
+  <circle cx="200" cy="310" r="20" fill="#FFD700"/>
+  <!-- Arms -->
+  <line x1="180" y1="330" x2="150" y2="310" stroke="#FFD700" stroke-width="6" stroke-linecap="round"/>
+  <line x1="220" y1="330" x2="250" y2="310" stroke="#FFD700" stroke-width="6" stroke-linecap="round"/>
+  <!-- Legs -->
+  <line x1="190" y1="375" x2="180" y2="410" stroke="#00D4FF" stroke-width="6" stroke-linecap="round"/>
+  <line x1="210" y1="375" x2="220" y2="410" stroke="#00D4FF" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Shield with array pattern -->
+  <ellipse cx="140" cy="340" rx="30" ry="40" fill="#FF4500" opacity="0.9"/>
+  <rect x="125" y="320" width="8" height="8" fill="#00FF88"/>
+  <rect x="137" y="320" width="8" height="8" fill="#00D4FF"/>
+  <rect x="149" y="320" width="8" height="8" fill="#FF00FF"/>
+  <rect x="125" y="332" width="8" height="8" fill="#00D4FF"/>
+  <rect x="137" y="332" width="8" height="8" fill="#FF00FF"/>
+
+  <!-- Title background -->
+  <rect x="0" y="420" width="400" height="80" fill="#000000" opacity="0.6"/>
+
+  <!-- Title text -->
+  <text x="200" y="460" font-size="48" font-weight="bold" fill="#FFFFFF" text-anchor="middle" font-family="Arial">ARRAYS</text>
+  <text x="200" y="488" font-size="16" fill="#FFD700" text-anchor="middle" font-family="Arial">&amp; STRINGS</text>
+</svg>

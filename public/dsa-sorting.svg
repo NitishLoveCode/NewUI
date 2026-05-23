@@ -1,0 +1,93 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sortGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF1744;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FF6E40;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFAA00;stop-opacity:1" />
+    </linearGradient>
+    <filter id="sortGlow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#sortGradient)"/>
+
+  <!-- Chaotic numbers being sorted -->
+  <g id="unsortedNumbers" opacity="0.6">
+    <text x="50" y="120" font-size="32" font-weight="bold" fill="#FFFFFF" transform="rotate(-25 50 120)">7</text>
+    <text x="340" y="140" font-size="32" font-weight="bold" fill="#FFFFFF" transform="rotate(30 340 140)">3</text>
+    <text x="80" y="200" font-size="28" font-weight="bold" fill="#FFFF00" transform="rotate(15 80 200)">9</text>
+    <text x="320" y="180" font-size="28" font-weight="bold" fill="#00FF88" transform="rotate(-20 320 180)">1</text>
+  </g>
+
+  <!-- Sorting bars (from chaotic to sorted) -->
+  <g id="sortingBars">
+    <!-- Chaotic bars on left -->
+    <rect x="40" y="100" width="20" height="180" fill="#FF00FF" opacity="0.7" filter="url(#sortGlow)"/>
+    <rect x="65" y="80" width="20" height="200" fill="#00D4FF" opacity="0.7" filter="url(#sortGlow)"/>
+    <rect x="90" y="140" width="20" height="140" fill="#00FF88" opacity="0.7" filter="url(#sortGlow)"/>
+    <rect x="115" y="60" width="20" height="220" fill="#FFFF00" opacity="0.7" filter="url(#sortGlow)"/>
+
+    <!-- Sorting arrows -->
+    <path d="M 145,180 Q 170,140 195,150" fill="none" stroke="#FFFFFF" stroke-width="3" marker-end="url(#arrowhead)" opacity="0.8"/>
+    <path d="M 145,160 Q 170,180 195,170" fill="none" stroke="#FFFFFF" stroke-width="3" marker-end="url(#arrowhead)" opacity="0.8"/>
+
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+        <polygon points="0 0, 10 3, 0 6" fill="#FFFFFF" />
+      </marker>
+    </defs>
+
+    <!-- Sorted bars on right -->
+    <rect x="205" y="200" width="20" height="80" fill="#00FF88" opacity="0.9" filter="url(#sortGlow)"/>
+    <rect x="230" y="140" width="20" height="140" fill="#00D4FF" opacity="0.9" filter="url(#sortGlow)"/>
+    <rect x="255" y="80" width="20" height="200" fill="#FF00FF" opacity="0.9" filter="url(#sortGlow)"/>
+    <rect x="280" y="40" width="20" height="240" fill="#FFFF00" opacity="0.9" filter="url(#sortGlow)"/>
+  </g>
+
+  <!-- Wizard/Sorter figure casting spell -->
+  <g id="wizard">
+    <!-- Aura circle -->
+    <circle cx="200" cy="350" r="50" fill="none" stroke="#FFFF00" stroke-width="2" opacity="0.5"/>
+
+    <!-- Head -->
+    <circle cx="200" cy="300" r="20" fill="#FFD700"/>
+    <circle cx="200" cy="300" r="20" fill="none" stroke="#FF4500" stroke-width="2"/>
+
+    <!-- Wizard hat -->
+    <polygon points="200,280 185,295 215,295" fill="#0066CC"/>
+    <circle cx="200" cy="295" r="2" fill="#FFD700"/>
+
+    <!-- Body/Robe -->
+    <polygon points="180,320 220,320 225,370 175,370" fill="#FF1744" opacity="0.85"/>
+
+    <!-- Arms casting spell -->
+    <line x1="180" y1="330" x2="120" y2="260" stroke="#00FF88" stroke-width="6" stroke-linecap="round" filter="url(#sortGlow)"/>
+    <line x1="220" y1="330" x2="280" y2="260" stroke="#00FF88" stroke-width="6" stroke-linecap="round" filter="url(#sortGlow)"/>
+
+    <!-- Magic energy balls at hand tips -->
+    <circle cx="115" cy="255" r="12" fill="#FFFF00" opacity="0.9" filter="url(#sortGlow)"/>
+    <circle cx="285" cy="255" r="12" fill="#FFFF00" opacity="0.9" filter="url(#sortGlow)"/>
+
+    <!-- Staff/Wand -->
+    <line x1="140" y1="340" x2="140" y2="420" stroke="#FFD700" stroke-width="4"/>
+    <circle cx="140" cy="425" r="8" fill="#FF00FF" opacity="0.9"/>
+  </g>
+
+  <!-- Swirling energy -->
+  <circle cx="100" cy="250" r="8" fill="#FFFF00" opacity="0.6" filter="url(#sortGlow)"/>
+  <circle cx="300" cy="220" r="6" fill="#00FF88" opacity="0.5" filter="url(#sortGlow)"/>
+  <circle cx="150" cy="400" r="7" fill="#FF00FF" opacity="0.5" filter="url(#sortGlow)"/>
+
+  <!-- Title background -->
+  <rect x="0" y="420" width="400" height="80" fill="#000000" opacity="0.75"/>
+
+  <!-- Title -->
+  <text x="200" y="460" font-size="44" font-weight="bold" fill="#FFFF00" text-anchor="middle" font-family="Arial">SORTING</text>
+  <text x="200" y="488" font-size="16" fill="#00FF88" text-anchor="middle" font-family="Arial">ALGORITHMS</text>
+</svg>

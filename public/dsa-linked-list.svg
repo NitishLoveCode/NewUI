@@ -1,0 +1,93 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="linkedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9D4EDD;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#3A86FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="nodGlow">
+      <stop offset="0%" style="stop-color:#00FF88;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:0.2" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#linkedGradient)"/>
+
+  <!-- Glow effects -->
+  <circle cx="80" cy="150" r="60" fill="none" stroke="#00FF88" stroke-width="2" opacity="0.4"/>
+  <circle cx="200" cy="180" r="60" fill="none" stroke="#00D4FF" stroke-width="2" opacity="0.4"/>
+  <circle cx="320" cy="150" r="60" fill="none" stroke="#00FF88" stroke-width="2" opacity="0.4"/>
+
+  <!-- Chain links connecting nodes -->
+  <defs>
+    <path id="link" d="M 0,-8 Q 5,-8 5,0 Q 5,8 0,8" fill="none" stroke="#00D4FF" stroke-width="3" stroke-linecap="round"/>
+  </defs>
+
+  <!-- Animated chain from node 1 to node 2 -->
+  <g id="chainLink1">
+    <line x1="120" y1="150" x2="160" y2="160" stroke="#00FF88" stroke-width="4" opacity="0.8" stroke-linecap="round"/>
+    <circle cx="140" cy="155" r="6" fill="#FFFF00" opacity="0.8"/>
+  </g>
+
+  <!-- Animated chain from node 2 to node 3 -->
+  <g id="chainLink2">
+    <line x1="240" y1="170" x2="280" y2="155" stroke="#00FF88" stroke-width="4" opacity="0.8" stroke-linecap="round"/>
+    <circle cx="260" cy="162" r="6" fill="#FFFF00" opacity="0.8"/>
+  </g>
+
+  <!-- Node 1 -->
+  <circle cx="80" cy="150" r="35" fill="url(#nodGlow)"/>
+  <circle cx="80" cy="150" r="35" fill="none" stroke="#00FF88" stroke-width="2"/>
+  <text x="80" y="160" font-size="28" font-weight="bold" fill="#FFFFFF" text-anchor="middle">A</text>
+
+  <!-- Node 2 -->
+  <circle cx="200" cy="180" r="35" fill="url(#nodGlow)"/>
+  <circle cx="200" cy="180" r="35" fill="none" stroke="#00D4FF" stroke-width="2"/>
+  <text x="200" y="190" font-size="28" font-weight="bold" fill="#FFFFFF" text-anchor="middle">B</text>
+
+  <!-- Node 3 -->
+  <circle cx="320" cy="150" r="35" fill="url(#nodGlow)"/>
+  <circle cx="320" cy="150" r="35" fill="none" stroke="#00FF88" stroke-width="2"/>
+  <text x="320" y="160" font-size="28" font-weight="bold" fill="#FFFFFF" text-anchor="middle">C</text>
+
+  <!-- Node pointers (arrows) -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#00FF88" />
+    </marker>
+  </defs>
+
+  <!-- Pointer 1 -->
+  <path d="M 115 150 Q 150 140 165 155" fill="none" stroke="#00FF88" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.7"/>
+
+  <!-- Pointer 2 -->
+  <path d="M 235 175 Q 270 165 285 155" fill="none" stroke="#00FF88" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.7"/>
+
+  <!-- Pointer 3 (NULL) -->
+  <line x1="355" y1="150" x2="385" y2="150" stroke="#FF4500" stroke-width="3"/>
+  <circle cx="390" cy="150" r="4" fill="#FF4500"/>
+
+  <!-- Chain-like figure at bottom -->
+  <g id="chainFigure">
+    <!-- Head -->
+    <circle cx="200" cy="300" r="22" fill="#00FF88"/>
+    <circle cx="200" cy="300" r="22" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+    <!-- Chain body -->
+    <circle cx="200" cy="345" r="18" fill="#00D4FF" opacity="0.8"/>
+    <circle cx="200" cy="390" r="18" fill="#9D4EDD" opacity="0.8"/>
+    <circle cx="200" cy="435" r="18" fill="#00FF88" opacity="0.8"/>
+
+    <!-- Connecting rings -->
+    <line x1="200" y1="322" x2="200" y2="327" stroke="#FFFFFF" stroke-width="3"/>
+    <line x1="200" y1="363" x2="200" y2="372" stroke="#FFFFFF" stroke-width="3"/>
+    <line x1="200" y1="408" x2="200" y2="417" stroke="#FFFFFF" stroke-width="3"/>
+  </g>
+
+  <!-- Title background -->
+  <rect x="0" y="410" width="400" height="90" fill="#000000" opacity="0.7"/>
+
+  <!-- Title -->
+  <text x="200" y="455" font-size="44" font-weight="bold" fill="#00FF88" text-anchor="middle" font-family="Arial">LINKED LISTS</text>
+</svg>

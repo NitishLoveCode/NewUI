@@ -1,0 +1,87 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FF8C00;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#dpGradient)"/>
+
+  <!-- Mountain/Pyramid structure -->
+  <polygon points="200,80 350,300 50,300" fill="#FF6347" opacity="0.8" filter="url(#glow)"/>
+  <polygon points="200,80 350,300 50,300" fill="none" stroke="#FFFF00" stroke-width="3"/>
+
+  <!-- Stacked blocks on pyramid -->
+  <g id="blocks">
+    <!-- Block 1 (top) -->
+    <rect x="185" y="90" width="30" height="30" fill="#00D4FF" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="200" y="111" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">1</text>
+
+    <!-- Block 2 -->
+    <rect x="170" y="130" width="60" height="30" fill="#00FF88" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="200" y="151" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">2</text>
+
+    <!-- Block 3 -->
+    <rect x="155" y="170" width="90" height="30" fill="#FF00FF" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="200" y="191" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">3</text>
+
+    <!-- Block 4 -->
+    <rect x="140" y="210" width="120" height="30" fill="#00D4FF" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="200" y="231" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">4</text>
+
+    <!-- Block 5 -->
+    <rect x="125" y="250" width="150" height="30" fill="#00FF88" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="200" y="271" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">5</text>
+  </g>
+
+  <!-- Glowing particles -->
+  <circle cx="120" cy="140" r="6" fill="#FFFF00" opacity="0.7" filter="url(#glow)"/>
+  <circle cx="280" cy="160" r="5" fill="#00D4FF" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="100" cy="220" r="7" fill="#FF00FF" opacity="0.7" filter="url(#glow)"/>
+  <circle cx="300" cy="240" r="6" fill="#00FF88" opacity="0.6" filter="url(#glow)"/>
+
+  <!-- Climber figure -->
+  <g id="climber">
+    <!-- Head -->
+    <circle cx="160" cy="280" r="16" fill="#FFD700"/>
+    <circle cx="160" cy="280" r="16" fill="none" stroke="#FF4500" stroke-width="2"/>
+
+    <!-- Helmet/climbing gear -->
+    <path d="M 145,270 Q 160,260 175,270" fill="#0066CC" opacity="0.9"/>
+
+    <!-- Body -->
+    <rect x="150" y="300" width="20" height="25" fill="#00FF88" opacity="0.8" rx="3"/>
+
+    <!-- Arms reaching up -->
+    <line x1="150" y1="310" x2="120" y2="270" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <line x1="170" y1="310" x2="200" y2="270" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Legs -->
+    <line x1="155" y1="325" x2="150" y2="350" stroke="#FF4500" stroke-width="4" stroke-linecap="round"/>
+    <line x1="165" y1="325" x2="170" y2="350" stroke="#FF4500" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Climbing rope -->
+    <path d="M 165,200 Q 170,240 165,280" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.6" stroke-dasharray="5,5"/>
+  </g>
+
+  <!-- Energy waves -->
+  <circle cx="200" cy="300" r="100" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.3"/>
+  <circle cx="200" cy="300" r="150" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.2"/>
+
+  <!-- Title background -->
+  <rect x="0" y="420" width="400" height="80" fill="#000000" opacity="0.75"/>
+
+  <!-- Title -->
+  <text x="200" y="455" font-size="44" font-weight="bold" fill="#FFD700" text-anchor="middle" font-family="Arial">DYNAMIC</text>
+  <text x="200" y="485" font-size="36" font-weight="bold" fill="#00FF88" text-anchor="middle" font-family="Arial">PROGRAMMING</text>
+</svg>
