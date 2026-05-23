@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import type { GameCard } from '@/types';
 
@@ -17,11 +18,20 @@ export default function GameCardComponent({ game, onClick }: { game: GameCard; o
         className="relative rounded-xl overflow-hidden"
         style={{ aspectRatio: '3/4' }}
       >
-        {/* Gradient game art */}
-        <div
-          className="absolute inset-0"
-          style={{ background: game.gradient }}
-        />
+        {/* Gradient or image game art */}
+        {game.image ? (
+          <Image
+            src={game.image}
+            alt={game.title}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{ background: game.gradient }}
+          />
+        )}
 
         {/* Title overlay */}
         <div
@@ -44,11 +54,13 @@ export default function GameCardComponent({ game, onClick }: { game: GameCard; o
           </p>
         </div>
 
-        {/* Decorative accent element */}
-        <div
-          className="absolute top-2 right-2 w-8 h-8 rounded-full opacity-20"
-          style={{ backgroundColor: game.accentColor }}
-        />
+        {/* Decorative accent element (only shown without image) */}
+        {!game.image && (
+          <div
+            className="absolute top-2 right-2 w-8 h-8 rounded-full opacity-20"
+            style={{ backgroundColor: game.accentColor }}
+          />
+        )}
       </div>
 
       {/* Playing count */}
