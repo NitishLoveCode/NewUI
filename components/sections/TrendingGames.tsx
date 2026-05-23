@@ -20,7 +20,7 @@ export default function TrendingGames() {
   return (
     <section className="w-full">
       <SectionHeader
-        title="Trending Games"
+        title="Trending Problems"
         icon={<TrendingUp size={18} className="text-white" />}
       />
 
@@ -75,7 +75,7 @@ export default function TrendingGames() {
                 <div className="flex items-center gap-1 mt-1 px-0.5">
                   <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#00e701' }} />
                   <span className="text-[10px]" style={{ color: '#b1bad3' }}>
-                    <span className="font-semibold text-white">{game.playing}</span> playing
+                    <span className="font-semibold text-white">{game.playing}</span> solving
                   </span>
                 </div>
               </div>

@@ -124,7 +124,7 @@ export default function Navbar({
                 <div className="flex items-center justify-center w-7 h-7 rounded-full" style={{ backgroundColor: 'rgba(0,230,118,0.2)' }}>
                   <User size={14} style={{ color: '#00e676' }} />
                 </div>
-                <span className="text-sm font-semibold text-white">{user.email?.split('@')[0]}</span>
+                <span className="text-sm font-semibold text-white">{user.user_metadata.name}</span>
               </motion.button>
 
               {showMenu && (
@@ -218,7 +218,7 @@ export default function Navbar({
                 <div className="flex items-center justify-center w-6 h-6 rounded-full" style={{ backgroundColor: 'rgba(0,230,118,0.2)' }}>
                   <User size={12} style={{ color: '#00e676' }} />
                 </div>
-                <span className="text-xs font-semibold text-white">{user.email?.split('@')[0]}</span>
+                <span className="text-xs font-semibold text-white">{user.user_metadata.name}</span>
               </motion.button>
 
               {showMenu && (

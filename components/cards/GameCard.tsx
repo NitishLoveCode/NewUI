@@ -58,7 +58,7 @@ export default function GameCardComponent({ game, onClick }: { game: GameCard; o
           style={{ backgroundColor: '#00e701', boxShadow: '0 0 4px #00e701' }}
         />
         <span className="text-xs" style={{ color: '#b1bad3' }}>
-          <span className="font-semibold text-white">{game.playing}</span> playing
+          <span className="font-semibold text-white">{game.playing}</span> solving
         </span>
       </div>
     </motion.div>
