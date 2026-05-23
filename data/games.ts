@@ -53,6 +53,7 @@ export const trendingGames: GameCard[] = [
     playing: 569,
     gradient: 'linear-gradient(135deg, #be185d 0%, #ec4899 50%, #f9a8d4 100%)',
     accentColor: '#f9a8d4',
+    image: '/images/String_dsa.png',
   },
   {
     id: '7',
