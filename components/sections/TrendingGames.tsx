@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 import SectionHeader from './SectionHeader';
@@ -56,8 +57,16 @@ export default function TrendingGames() {
               >
                 <div
                   className="relative rounded-xl overflow-hidden"
-                  style={{ aspectRatio: '3/4', background: game.gradient }}
+                  style={{ aspectRatio: '3/4', background: game.image ? undefined : game.gradient }}
                 >
+                  {game.image && (
+                    <Image
+                      src={game.image}
+                      alt={game.title}
+                      fill
+                      className="object-cover"
+                    />
+                  )}
                   <div
                     className="absolute inset-0 flex flex-col justify-end p-1.5"
                     style={{

@@ -3,11 +3,12 @@ import type { GameCard } from '@/types';
 export const trendingGames: GameCard[] = [
   {
     id: '1',
-    title: 'Gates of\nOlympus 1000',
-    provider: 'Pragmatic Play',
-    playing: 805,
-    gradient: 'linear-gradient(135deg, #1a3a6e 0%, #2563b0 40%, #8b5cf6 100%)',
-    accentColor: '#fbbf24',
+    title: 'Star\nPrinting DSA',
+    provider: 'DSA Problems',
+    playing: 1240,
+    gradient: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0ea5e9 100%)',
+    accentColor: '#38bdf8',
+    image: '/images/star_printing_dsa_questions.png',
   },
   {
     id: '2',
@@ -16,6 +17,7 @@ export const trendingGames: GameCard[] = [
     playing: 891,
     gradient: 'linear-gradient(135deg, #ea580c 0%, #f97316 40%, #fbbf24 100%)',
     accentColor: '#fb923c',
+    image: '/images/masterBaicMaths.png',
   },
   {
     id: '3',
@@ -24,6 +26,7 @@ export const trendingGames: GameCard[] = [
     playing: 357,
     gradient: 'linear-gradient(135deg, #9333ea 0%, #ec4899 50%, #f472b6 100%)',
     accentColor: '#f472b6',
+    image: '/images/recursion.png',
   },
   {
     id: '4',
@@ -32,6 +35,7 @@ export const trendingGames: GameCard[] = [
     playing: 563,
     gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 40%, #fde68a 100%)',
     accentColor: '#fde68a',
+    image: '/images/Array_dsa.png',
   },
   {
     id: '5',
@@ -40,6 +44,7 @@ export const trendingGames: GameCard[] = [
     playing: 270,
     gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 40%, #4c1d95 100%)',
     accentColor: '#a78bfa',
+    image: '/images/Hashing_dsa.png',
   },
   {
     id: '6',

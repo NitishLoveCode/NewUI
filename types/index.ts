@@ -5,6 +5,7 @@ export interface GameCard {
   playing: number;
   gradient: string;
   accentColor: string;
+  image?: string;
 }
 
 export interface SportsCard {
