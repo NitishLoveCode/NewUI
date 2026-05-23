@@ -53,7 +53,7 @@ export const trendingGames: GameCard[] = [
     playing: 569,
     gradient: 'linear-gradient(135deg, #be185d 0%, #ec4899 50%, #f9a8d4 100%)',
     accentColor: '#f9a8d4',
-    image: '/images/string_algo.png',
+    image: '/images/String_dsa.png',
   },
   {
     id: '7',
@@ -62,7 +62,7 @@ export const trendingGames: GameCard[] = [
     playing: 96,
     gradient: 'linear-gradient(135deg, #065f46 0%, #059669 40%, #34d399 100%)',
     accentColor: '#34d399',
-    image: '/images/binary_search.png',
+    image: '/images/string_algo.png',
   },
   {
     id: '8',
@@ -71,5 +71,6 @@ export const trendingGames: GameCard[] = [
     playing: 84,
     gradient: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 50%, #a855f7 100%)',
     accentColor: '#c4b5fd',
+    image: '/images/binary_search.png',
   },
 ];
