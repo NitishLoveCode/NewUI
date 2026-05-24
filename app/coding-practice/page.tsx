@@ -1046,28 +1046,16 @@ function ChatDrawer({
               style={{
                 background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%)',
                 borderColor: 'rgba(255,255,255,0.08)',
-                scrollBehavior: 'smooth',
                 overflow: 'hidden',
               }}
             >
-              <style>{`
-                .no-scrollbar {
-                  -ms-overflow-style: none;
-                  scrollbar-width: none;
-                }
-                .no-scrollbar::-webkit-scrollbar {
-                  display: none;
-                  width: 0;
-                  height: 0;
-                }
-              `}</style>
-              <div className="overflow-y-auto flex-1 flex flex-col gap-3 no-scrollbar">
+              <div className="flex flex-col gap-2">
                 {/* Close Button */}
                 <motion.button
                   onClick={onClose}
                   whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  className="self-end flex items-center justify-center rounded-full"
+                  className="self-start flex items-center justify-center rounded-full"
                   style={{
                     width: 32,
                     height: 32,
@@ -1081,12 +1069,11 @@ function ChatDrawer({
 
                 {/* You */}
                 <motion.div
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-1"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
                 >
-                  <div className="text-xs font-bold text-white/60 uppercase tracking-wider">You</div>
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
@@ -1098,7 +1085,12 @@ function ChatDrawer({
                       boxShadow: isCameraOff ? 'none' : '0 0 20px rgba(124,58,237,0.2)',
                     }}
                   >
-                    <span className="text-5xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
+                    <span className="text-3xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
+
+                    {/* Label - Top */}
+                    <div className="absolute top-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
+                      <div className="text-xs font-bold text-white/80 uppercase tracking-wider">You</div>
+                    </div>
 
                     {/* Control Buttons Overlay */}
                     <div className="absolute inset-0 flex items-end justify-center p-2 bg-gradient-to-t from-black/80 to-transparent rounded-xl">
@@ -1196,22 +1188,26 @@ function ChatDrawer({
 
                 {/* Partner */}
                 <motion.div
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-1"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <div className="text-xs font-bold text-white/60 uppercase tracking-wider">Partner</div>
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square"
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
                     style={{
                       background: 'linear-gradient(135deg, rgba(34,211,238,0.4), rgba(6,182,212,0.2))',
                       border: '2px solid rgba(34,211,238,0.5)',
                       boxShadow: '0 0 20px rgba(34,211,238,0.2)',
                     }}
                   >
-                    <span className="text-5xl">🧑‍💻</span>
+                    <span className="text-3xl">🧑‍💻</span>
+
+                    {/* Label - Top */}
+                    <div className="absolute top-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
+                      <div className="text-xs font-bold text-white/80 uppercase tracking-wider">Partner</div>
+                    </div>
                   </motion.div>
                   <motion.div
                     className="flex items-center gap-1"
