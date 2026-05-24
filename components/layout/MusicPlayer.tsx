@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Music2,
@@ -54,6 +55,13 @@ function formatTime(seconds: number) {
 }
 
 export default function MusicPlayer() {
+  const pathname = usePathname();
+
+  // Don't show on coding-practice page
+  if (pathname === '/coding-practice') {
+    return null;
+  }
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [showTrackList, setShowTrackList] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -158,7 +166,7 @@ export default function MusicPlayer() {
       <audio ref={audioRef} preload="metadata" />
 
       <div
-        className="fixed bottom-4 right-4 z-50 flex flex-col items-end"
+        className="fixed top-20 right-4 z-50 flex flex-col items-end"
         style={{ userSelect: 'none' }}
       >
         <AnimatePresence>

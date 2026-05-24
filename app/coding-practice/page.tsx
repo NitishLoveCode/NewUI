@@ -9,7 +9,7 @@ import {
   Send, Trophy, Zap, UserX, Wifi, Terminal, ScreenShare,
   Clock, CheckCircle2, Flame, Star, MonitorStop, PhoneOff,
   RefreshCw, ChevronRight, Cpu, Eye, Globe, Shield, X,
-  ChevronDown, BookOpen, Users, AlignLeft,
+  ChevronDown, BookOpen, Music2, Users, AlignLeft, SkipBack, SkipForward, Volume2,
 } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
 
@@ -1288,6 +1288,7 @@ function CollaborationArena({
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(s => s + 1), 1000);
@@ -1331,20 +1332,117 @@ function CollaborationArena({
           onDisconnect={onDisconnect}
         />
 
-        <motion.button
-          onClick={() => setChatOpen(true)}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="relative w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm flex-shrink-0"
-          style={{
-            background: 'rgba(244,114,182,0.08)',
-            border: '1px solid rgba(244,114,182,0.25)',
-          }}
-        >
-          <MessageSquare size={15} style={{ color: '#f472b6' }} />
-          <span style={{ color: '#f472b6' }}>Open Chat</span>
-          <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full" style={{ background: '#4ade80' }} />
-        </motion.button>
+        <div className="flex gap-2 w-full relative">
+          <motion.button
+            onClick={() => setChatOpen(true)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
+            style={{
+              background: 'rgba(244,114,182,0.08)',
+              border: '1px solid rgba(244,114,182,0.25)',
+            }}
+          >
+            <MessageSquare size={15} style={{ color: '#f472b6' }} />
+            <span style={{ color: '#f472b6' }}>Chat</span>
+            <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full" style={{ background: '#4ade80' }} />
+          </motion.button>
+
+          <div className="relative">
+            <motion.button
+              onClick={() => setMusicOpen(!musicOpen)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center justify-center rounded-full flex-shrink-0"
+              style={{
+                width: 44,
+                height: 44,
+                background: musicOpen ? 'rgba(0,230,118,0.25)' : 'rgba(0,230,118,0.12)',
+                border: `1px solid ${musicOpen ? 'rgba(0,230,118,0.5)' : 'rgba(0,230,118,0.3)'}`,
+              }}
+              title="Music Player"
+            >
+              <Music2 size={18} color="#00e676" />
+            </motion.button>
+
+            {/* Music Player Popup */}
+            <AnimatePresence>
+              {musicOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed rounded-2xl overflow-hidden"
+                  style={{
+                    width: 300,
+                    background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
+                    border: '1px solid rgba(0,230,118,0.2)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(0,230,118,0.15)',
+                    zIndex: 99999,
+                    bottom: '65px',
+                    right: '12px',
+                  }}
+                >
+                  {/* Header */}
+                  <div
+                    className="flex items-center justify-between px-4 py-3"
+                    style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Music2 size={14} color="#00e676" />
+                      <span className="text-xs font-bold text-white">MUSIC</span>
+                    </div>
+                    <motion.button
+                      onClick={() => setMusicOpen(false)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      style={{ color: '#b1bad3' }}
+                    >
+                      <X size={12} />
+                    </motion.button>
+                  </div>
+
+                  {/* Music List */}
+                  <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+                    {[
+                      { id: 1, title: 'Casino Royale Vibes', artist: 'Lo-Fi Beats' },
+                      { id: 2, title: 'Lucky Night Chill', artist: 'Ambient Sounds' },
+                      { id: 3, title: 'High Roller Mix', artist: 'Deep House' },
+                      { id: 4, title: 'Vegas Nights', artist: 'Electronic Beats' },
+                      { id: 5, title: 'Neon Dreams', artist: 'Synthwave' },
+                      { id: 6, title: 'Midnight Jazz', artist: 'Smooth Jazz' },
+                    ].map((track, idx) => (
+                      <motion.button
+                        key={track.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors"
+                        style={{
+                          background: idx === 0 ? 'rgba(0,230,118,0.1)' : 'rgba(0,230,118,0.02)',
+                          border: `0.5px solid ${idx === 0 ? 'rgba(0,230,118,0.3)' : 'rgba(0,230,118,0.1)'}`,
+                        }}
+                        whileHover={{ backgroundColor: 'rgba(0,230,118,0.15)' }}
+                      >
+                        <div
+                          className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(0,230,118,0.1)' }}
+                        >
+                          <Play size={12} color="#00e676" fill="#00e676" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white truncate">{track.title}</div>
+                          <div className="text-[9px] text-white/50 truncate">{track.artist}</div>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       <ChatDrawer
