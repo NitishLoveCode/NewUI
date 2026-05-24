@@ -34,7 +34,7 @@ export default function GameCardComponent({ game, onClick }: { game: GameCard; o
         )}
 
         {/* Title overlay */}
-        <div
+        {/* <div
           className="absolute inset-0 flex flex-col justify-end p-2"
           style={{
             background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)',
@@ -52,7 +52,7 @@ export default function GameCardComponent({ game, onClick }: { game: GameCard; o
           >
             {game.provider}
           </p>
-        </div>
+        </div> */}
 
         {/* Decorative accent element (only shown without image) */}
         {!game.image && (
