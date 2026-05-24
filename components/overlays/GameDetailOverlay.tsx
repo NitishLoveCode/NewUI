@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { GameCard } from '@/types';
@@ -40,14 +41,12 @@ function CompletedBadge({ step }: { step: number }) {
       exit={{ scale: 0, rotate: 180, opacity: 0, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 500, damping: 18 }}
     >
-      {/* Infinitely rotating outer starburst */}
       <motion.div
         className="absolute inset-0"
         style={{ background: '#4ade80', clipPath: STARBURST }}
         animate={{ rotate: 360 }}
         transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
       />
-      {/* Static inner circle — step number stays upright */}
       <div
         className="relative z-10 flex items-center justify-center rounded-full"
         style={{ width: 26, height: 26, background: '#15803d' }}
@@ -59,8 +58,14 @@ function CompletedBadge({ step }: { step: number }) {
 }
 
 export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
+  const router = useRouter();
   const accent = game.accentColor;
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
+  const handleStepClick = (step: number) => {
+    onClose();
+    router.push(`/coding-practice?step=${step}`);
+  };
 
   const toggleStep = (step: number) => {
     setCompletedSteps(prev => {
@@ -115,7 +120,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 transition={{ delay: 0.24 }}
               >
-                Win Journey · 12 Steps
+                Coding Journey · 12 Steps · Click to Start
               </motion.p>
             </div>
             <motion.button
@@ -153,7 +158,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                           <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
                             <div
                               className="cursor-pointer"
-                              onClick={() => toggleStep(step)}
+                              onClick={() => handleStepClick(step)}
                             >
                               <AnimatePresence mode="wait">
                                 {isDone ? (
@@ -171,6 +176,8 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                     animate={{ scale: 1, opacity: 1 }}
                                     exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
                                     transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                    whileHover={{ scale: 1.15 }}
+                                    whileTap={{ scale: 0.9 }}
                                   >
                                     <span className="text-sm font-black select-none" style={{ color: accent }}>
                                       {step}
@@ -209,12 +216,10 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                             const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
                             return (
                               <div className="flex-1 relative" style={{ paddingTop: 16 }}>
-                                {/* Track (dim background) */}
                                 <div
                                   className="h-[11px] w-full rounded-sm"
                                   style={{ background: barIsComplete ? '#4ade8020' : `${accent}12` }}
                                 />
-                                {/* Animated fill */}
                                 <motion.div
                                   className="absolute left-0 right-0 h-[11px] rounded-sm"
                                   style={{
@@ -255,12 +260,10 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                         style={{ height: 26 }}
                       >
                         <div className="relative" style={{ width: 44 }}>
-                          {/* Track */}
                           <div
                             className="absolute rounded-sm"
                             style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${accent}12` }}
                           />
-                          {/* Fill */}
                           <motion.div
                             className="absolute rounded-sm origin-top"
                             style={{
@@ -294,7 +297,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
             animate={{ opacity: 1 }}
             transition={{ delay: nodeDelay(12) + 0.45 }}
           >
-            Tap a step to complete · Tap anywhere to close
+            Click a step to start coding · Tap anywhere to close
           </motion.p>
         </motion.div>
       </motion.div>
