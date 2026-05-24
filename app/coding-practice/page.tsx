@@ -1134,37 +1134,37 @@ function VideoCallBar({
   const CtrlBtn = ({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: React.ReactNode; label: string }) => (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.07 }}
-      whileTap={{ scale: 0.93 }}
-      className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold flex-1"
-      style={{ background: `${color}14`, border: `1px solid ${color}35`, color }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.92 }}
+      className="flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg text-xs font-semibold text-xs flex-1"
+      style={{ background: `${color}12`, border: `0.5px solid ${color}30`, color }}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
+      <span className="hidden sm:inline text-[9px]">{label}</span>
     </motion.button>
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2 w-full">
-      <div className="flex gap-2 w-full">
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-1.5 w-full">
+      <div className="flex gap-1.5 w-full">
         <VideoBox isYou color="#7c3aed" />
         <VideoBox isYou={false} color="#22d3ee" />
       </div>
 
-      <div className="flex items-center gap-1.5 w-full">
+      <div className="flex items-center gap-1 w-full">
         <CtrlBtn onClick={onMute}      color={isMuted    ? '#f87171' : '#4ade80'} icon={isMuted    ? <MicOff size={13} />    : <Mic size={13} />}         label="Mute" />
         <CtrlBtn onClick={onCamera}    color={isCameraOff? '#f87171' : '#22d3ee'} icon={isCameraOff? <VideoOff size={13} />  : <Video size={13} />}       label="Cam"  />
         <CtrlBtn onClick={onRecording} color={isRecording? '#f97316' : '#c084fc'} icon={isRecording? <MonitorStop size={13} />: <ScreenShare size={13} />} label="Rec"  />
 
         <motion.button
           onClick={onDisconnect}
-          whileHover={{ scale: 1.06, boxShadow: '0 0 14px rgba(248,113,113,0.4)' }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-          style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '1px solid #f8717128' }}
+          whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(248,113,113,0.35)' }}
+          whileTap={{ scale: 0.92 }}
+          className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
+          style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717128' }}
         >
-          <PhoneOff size={12} />
-          <span className="hidden sm:inline">End</span>
+          <PhoneOff size={10} />
+          <span className="hidden sm:inline text-[9px]">End</span>
         </motion.button>
       </div>
     </motion.div>
@@ -1426,10 +1426,11 @@ function CodingPracticeContent() {
     };
   }, []);
 
-  // Auto-connect when step parameter is provided
+  // Auto-connect when step parameter is provided - skip searching state
   useEffect(() => {
     if (stepParam && connectionState === 'idle') {
-      handleConnect(true);
+      setConnectionState('connected');
+      setIsAnonymous(true);
     }
   }, [stepParam]);
 
