@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
@@ -167,9 +167,63 @@ function rand(min: number, max: number) {
 
 // ─── Steps Progress Bar ───────────────────────────────────────────────────────
 
+const ROWS_STEPS: number[][] = [
+  [1, 2, 3, 4],
+  [8, 7, 6, 5],
+  [9, 10, 11, 12],
+];
+
+const NODE_START_VAL = 0.28;
+const NODE_GAP_VAL = 0.11;
+const nodeDelayFunc = (step: number) => NODE_START_VAL + (step - 1) * NODE_GAP_VAL;
+
+const STARBURST_PATH = `polygon(
+  50% 0%, 59.84% 13.29%, 75% 6.7%, 76.87% 23.13%,
+  93.3% 25%, 86.71% 40.16%, 100% 50%, 86.71% 59.84%,
+  93.3% 75%, 76.87% 76.87%, 75% 93.3%, 59.84% 86.71%,
+  50% 100%, 40.16% 86.71%, 25% 93.3%, 23.13% 76.87%,
+  6.7% 75%, 13.29% 59.84%, 0% 50%, 13.29% 40.16%,
+  6.7% 25%, 23.13% 23.13%, 25% 6.7%, 40.16% 13.29%
+)`;
+
+function CompletedStepBadge({ step }: { step: number }) {
+  return (
+    <motion.div
+      className="relative w-11 h-11 flex items-center justify-center"
+      initial={{ scale: 0, rotate: -180, opacity: 0 }}
+      animate={{ scale: 1, rotate: 0, opacity: 1 }}
+      exit={{ scale: 0, rotate: 180, opacity: 0, transition: { duration: 0.15 } }}
+      transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+    >
+      <motion.div
+        className="absolute inset-0"
+        style={{ background: '#4ade80', clipPath: STARBURST_PATH }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+      />
+      <div
+        className="relative z-10 flex items-center justify-center rounded-full"
+        style={{ width: 26, height: 26, background: '#15803d' }}
+      >
+        <span className="text-[11px] font-black text-white select-none leading-none">{step}</span>
+      </div>
+    </motion.div>
+  );
+}
+
 function StepsBar({ current, onStep }: { current: number; onStep: (n: number) => void }) {
-  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const solvedCount = STEPS.filter(s => s.solved).length;
+
+  const handleStepClick = (step: number) => {
+    setCompletedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(step)) next.delete(step);
+      else next.add(step);
+      return next;
+    });
+    onStep(step);
+  };
 
   return (
     <motion.div
@@ -179,7 +233,7 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
       style={{ scrollBehavior: 'smooth' }}
     >
       <div
-        className="p-3 rounded-2xl"
+        className="p-4 rounded-2xl"
         style={{
           background: 'rgba(15,21,46,0.8)',
           border: '1px solid rgba(255,255,255,0.07)',
@@ -187,105 +241,187 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold text-white/70">Progress</span>
+        <motion.div
+          className="flex items-center justify-between mb-4"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <span className="text-xs font-bold text-white/70">Progress Journey</span>
           <span className="text-xs font-black" style={{ color: '#22d3ee' }}>
             {solvedCount}<span className="text-white/30 font-normal">/16</span>
           </span>
-        </div>
+        </motion.div>
 
-        {/* Progress bar */}
-        <div className="h-1 rounded-full mb-3" style={{ background: 'rgba(255,255,255,0.06)' }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #22d3ee, #818cf8)', width: `${(solvedCount / 16) * 100}%` }}
-            initial={{ width: 0 }}
-            animate={{ width: `${(solvedCount / 16) * 100}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-          />
-        </div>
+        {/* Zig-zag animation path */}
+        <div>
+          {ROWS_STEPS.map((row, rowIndex) => {
+            const isReverse = rowIndex % 2 === 1;
 
-        {/* Grid: 4 steps per row */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {STEPS.map((step) => (
-            <div
-              key={step.num}
-              className="relative"
-              onMouseEnter={() => setHoveredStep(step.num)}
-              onMouseLeave={() => setHoveredStep(null)}
-            >
-              <motion.button
-                onClick={() => onStep(step.num)}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.88 }}
-                className="relative flex flex-col items-center justify-center cursor-pointer rounded-xl p-1.5 w-full gap-0.5"
-                style={{
-                  background: step.solved
-                    ? `${step.color}18`
-                    : step.num === current
-                      ? `${step.color}28`
-                      : 'rgba(255,255,255,0.03)',
-                  border: step.num === current
-                    ? `1.5px solid ${step.color}`
-                    : `1px solid ${step.solved ? step.color + '35' : 'rgba(255,255,255,0.05)'}`,
-                  boxShadow: step.num === current ? `0 0 10px ${step.glow}` : 'none',
-                }}
-              >
-                {step.num === current && (
-                  <motion.div
-                    className="absolute inset-0 rounded-xl"
-                    style={{ border: `1.5px solid ${step.color}` }}
-                    animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0, 0.6] }}
-                    transition={{ duration: 1.8, repeat: Infinity }}
-                  />
-                )}
+            return (
+              <Fragment key={rowIndex}>
+                {/* Row of nodes */}
+                <div className="flex items-start">
+                  {row.map((step, colIndex) => {
+                    const isLastInRow = colIndex === row.length - 1;
+                    const adjacentStep = isReverse ? step - 1 : step + 1;
+                    const bDelay = nodeDelayFunc(Math.max(step, adjacentStep)) + 0.08;
+                    const isDone = completedSteps.has(step);
+                    const isCurrent = step === current;
 
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black relative z-10"
-                  style={{
-                    background: step.solved
-                      ? `linear-gradient(135deg, ${step.color}, ${step.color}aa)`
-                      : step.num === current
-                        ? `linear-gradient(135deg, ${step.color}bb, ${step.color}77)`
-                        : 'rgba(255,255,255,0.06)',
-                    color: step.solved || step.num === current ? '#fff' : 'rgba(255,255,255,0.3)',
-                  }}
-                >
-                  {step.solved ? <CheckCircle2 size={11} /> : step.num}
+                    return (
+                      <Fragment key={step}>
+                        <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
+                          <div
+                            className="cursor-pointer"
+                            onClick={() => handleStepClick(step)}
+                          >
+                            <AnimatePresence mode="wait">
+                              {isDone ? (
+                                <CompletedStepBadge key="done" step={step} />
+                              ) : (
+                                <motion.div
+                                  key="normal"
+                                  className="relative w-11 h-11 rounded-full flex items-center justify-center"
+                                  style={{
+                                    background: isCurrent
+                                      ? `linear-gradient(135deg, ${STEPS[step - 1].color}bb, ${STEPS[step - 1].color}77)`
+                                      : 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
+                                    border: `2.5px solid ${STEPS[step - 1].color}`,
+                                    boxShadow: isCurrent
+                                      ? `0 0 18px ${STEPS[step - 1].glow}, inset 0 1px 0 rgba(255,255,255,0.14)`
+                                      : `0 0 18px ${STEPS[step - 1].glow}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                                  }}
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
+                                  transition={{ delay: nodeDelayFunc(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                  whileHover={{ scale: 1.12 }}
+                                  whileTap={{ scale: 0.9 }}
+                                >
+                                  <span className="text-sm font-black select-none" style={{ color: STEPS[step - 1].color }}>
+                                    {step}
+                                  </span>
+                                  {isCurrent && (
+                                    <motion.div
+                                      className="absolute rounded-full pointer-events-none"
+                                      style={{ inset: -6, border: `2px solid ${STEPS[step - 1].color}` }}
+                                      animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
+                                      transition={{ duration: 1.6, repeat: Infinity }}
+                                    />
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          <motion.span
+                            className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
+                            style={{
+                              color: isDone ? '#4ade80' : isCurrent ? STEPS[step - 1].color : `${STEPS[step - 1].color}70`,
+                              width: 44,
+                              display: 'block',
+                              letterSpacing: '0.06em',
+                            }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: nodeDelayFunc(step) + 0.22 }}
+                          >
+                            Q{step}
+                          </motion.span>
+                        </div>
+
+                        {/* Connecting bar */}
+                        {!isLastInRow && (() => {
+                          const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
+                          return (
+                            <div className="flex-1 relative" style={{ paddingTop: 16 }}>
+                              <div
+                                className="h-[11px] w-full rounded-sm"
+                                style={{ background: barIsComplete ? '#4ade8020' : `${STEPS[step - 1].color}12` }}
+                              />
+                              <motion.div
+                                className="absolute left-0 right-0 h-[11px] rounded-sm"
+                                style={{
+                                  top: 16,
+                                  background: barIsComplete
+                                    ? `linear-gradient(90deg, #4ade80, #4ade8099)`
+                                    : `linear-gradient(90deg, ${STEPS[step - 1].color}, ${STEPS[step - 1].color}bb)`,
+                                  boxShadow: barIsComplete
+                                    ? `0 0 12px #4ade8066, 0 2px 6px rgba(0,0,0,0.45)`
+                                    : `0 0 12px ${STEPS[step - 1].color}66, 0 2px 6px rgba(0,0,0,0.45)`,
+                                  transformOrigin: isReverse ? 'right center' : 'left center',
+                                }}
+                                initial={{ scaleX: 0 }}
+                                animate={{ scaleX: 1 }}
+                                transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
+                              />
+                            </div>
+                          );
+                        })()}
+                      </Fragment>
+                    );
+                  })}
                 </div>
 
-                <span
-                  className="text-[9px] font-semibold leading-none"
-                  style={{ color: step.num === current ? step.color : step.solved ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)' }}
-                >
-                  Q{step.num}
-                </span>
-              </motion.button>
+                {/* Vertical connector */}
+                {rowIndex < ROWS_STEPS.length - 1 && (() => {
+                  const isRight = rowIndex % 2 === 0;
+                  const connDelay = nodeDelayFunc(isRight ? 5 : 9) + 0.08;
+                  const currentRow = ROWS_STEPS[rowIndex];
+                  const nextRow = ROWS_STEPS[rowIndex + 1];
+                  const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
+                  const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
+                  const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
 
-              <AnimatePresence>
-                {hoveredStep === step.num && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 4, scale: 0.9 }}
-                    transition={{ duration: 0.12 }}
-                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none"
-                  >
+                  return (
                     <div
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap shadow-xl"
-                      style={{
-                        background: `linear-gradient(135deg, ${step.color}ee, ${step.color}bb)`,
-                        boxShadow: `0 4px 16px ${step.glow}`,
-                      }}
+                      className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
+                      style={{ height: 26 }}
                     >
-                      {step.label}
+                      <div className="relative" style={{ width: 44 }}>
+                        <div
+                          className="absolute rounded-sm"
+                          style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${STEPS[currentStep - 1].color}12` }}
+                        />
+                        <motion.div
+                          className="absolute rounded-sm origin-top"
+                          style={{
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 11,
+                            top: 0,
+                            bottom: 0,
+                            background: verticalIsComplete
+                              ? `linear-gradient(180deg, #4ade80, #4ade8099)`
+                              : `linear-gradient(180deg, ${STEPS[currentStep - 1].color}, ${STEPS[currentStep - 1].color}bb)`,
+                            boxShadow: verticalIsComplete
+                              ? `0 0 12px #4ade8066`
+                              : `0 0 12px ${STEPS[currentStep - 1].color}66`,
+                          }}
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: 1 }}
+                          transition={{ delay: connDelay, duration: 0.18, ease: 'easeOut' }}
+                        />
+                      </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+                  );
+                })()}
+              </Fragment>
+            );
+          })}
         </div>
+
+        {/* Footer info */}
+        <motion.p
+          className="text-center text-[10px] mt-6 font-medium tracking-widest uppercase"
+          style={{ color: 'rgba(255,255,255,0.18)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: nodeDelayFunc(12) + 0.45 }}
+        >
+          Click steps to mark progress
+        </motion.p>
       </div>
     </motion.div>
   );
