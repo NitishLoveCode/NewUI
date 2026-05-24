@@ -1263,34 +1263,65 @@ function ChatDrawer({
             </div>
 
             {/* Right Sidebar: Chat */}
-            <div className="w-72 flex-shrink-0 flex flex-col bg-black/40 border-l border-white/5 overflow-hidden">
+            <div className="w-80 flex-shrink-0 flex flex-col bg-gradient-to-b from-black/50 to-black/30 border-l border-white/10 overflow-hidden">
               {/* Header */}
-              <div className="px-3 py-2 border-b border-white/5">
-                <span className="text-xs font-bold text-white flex items-center gap-2">
-                  <MessageSquare size={14} style={{ color: '#22d3ee' }} />
-                  Chat
-                </span>
+              <div className="px-4 py-3 border-b border-white/10 bg-black/40 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #22d3ee, #06b6d4)' }}>
+                      <MessageSquare size={16} color="white" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-white block">Live Chat</span>
+                      <span className="text-[10px] text-white/50">2 online</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  </div>
+                </div>
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-2 flex flex-col justify-end">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col justify-end">
                 <AnimatePresence initial={false}>
-                  {messages.map(m => (
+                  {messages.map((m, idx) => (
                     <motion.div
                       key={m.id}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex gap-1 ${m.me ? 'flex-row-reverse' : ''}`}
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className={`flex gap-2.5 ${m.me ? 'flex-row-reverse' : ''}`}
                     >
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]" style={{ background: `${m.color}18` }}>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold shadow-lg"
+                        style={{
+                          background: `linear-gradient(135deg, ${m.color}40, ${m.color}20)`,
+                          border: `2px solid ${m.color}60`
+                        }}
+                      >
                         {m.avatar}
                       </div>
-                      <div className={`flex flex-col gap-0.5 max-w-[170px] ${m.me ? 'items-end' : ''}`}>
-                        <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.user}</span>
-                        <div className="px-2 py-1 rounded-lg text-[9px] text-white leading-tight" style={{ background: m.me ? `${m.color}20` : 'rgba(255,255,255,0.06)' }}>
-                          {m.msg}
+                      <div className={`flex flex-col gap-1 max-w-[210px] ${m.me ? 'items-end' : 'items-start'}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold" style={{ color: m.color }}>
+                            {m.user}
+                          </span>
+                          <span className="text-[8px] text-white/40">{m.time}</span>
                         </div>
-                        <span className="text-[8px] text-white/25">{m.time}</span>
+                        <motion.div
+                          whileHover={{ scale: 1.02 }}
+                          className="px-3 py-2 rounded-xl text-xs text-white leading-relaxed shadow-md backdrop-blur-sm"
+                          style={{
+                            background: m.me
+                              ? `linear-gradient(135deg, ${m.color}40, ${m.color}20)`
+                              : 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                            border: `1.5px solid ${m.me ? m.color + '50' : 'rgba(255,255,255,0.1)'}`,
+                            boxShadow: m.me ? `0 8px 16px ${m.color}20` : '0 4px 12px rgba(0,0,0,0.2)',
+                          }}
+                        >
+                          {m.msg}
+                        </motion.div>
                       </div>
                     </motion.div>
                   ))}
@@ -1299,17 +1330,33 @@ function ChatDrawer({
               </div>
 
               {/* Chat Input */}
-              <div className="px-2 py-2 border-t border-white/5">
-                <div className="flex items-center gap-1 rounded px-2 py-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="px-3 py-3 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+                <div
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all focus-within:ring-2"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34,211,238,0.1), rgba(255,255,255,0.05))',
+                    border: '1.5px solid rgba(34,211,238,0.3)',
+                    boxShadow: '0 4px 12px rgba(34,211,238,0.1)',
+                  }}
+                >
                   <input
                     value={input}
                     onChange={e => onInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && onSend()}
-                    placeholder="Chat..."
-                    className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder-white/25"
+                    placeholder="Type your message..."
+                    className="flex-1 bg-transparent text-xs text-white outline-none placeholder-white/40 font-medium"
                   />
-                  <motion.button onClick={onSend} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }} style={{ color: '#22d3ee' }}>
-                    <Send size={11} />
+                  <motion.button
+                    onClick={onSend}
+                    whileHover={{ scale: 1.2, rotate: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-1.5 rounded-lg flex-shrink-0 transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #22d3ee, #06b6d4)',
+                      boxShadow: '0 4px 12px rgba(34,211,238,0.3)',
+                    }}
+                  >
+                    <Send size={14} color="white" />
                   </motion.button>
                 </div>
               </div>
