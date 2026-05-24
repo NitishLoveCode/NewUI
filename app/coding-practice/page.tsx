@@ -1041,177 +1041,282 @@ function ChatDrawer({
             }}
           >
             {/* Left Sidebar: Video Feeds */}
-            <div className="w-64 flex-shrink-0 flex flex-col gap-3 p-4 bg-black/40 border-r border-white/5 overflow-y-auto">
-              {/* Close Button */}
-              <motion.button
-                onClick={onClose}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="self-end flex items-center justify-center rounded-full"
-                style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.1)' }}
-              >
-                <X size={16} color="white" />
-              </motion.button>
-
-              {/* You */}
-              <div className="flex flex-col gap-2">
-                <div className="text-xs font-bold text-white/70 uppercase">You</div>
-                <div
-                  className="rounded-xl overflow-hidden flex items-center justify-center aspect-square"
-                  style={{
-                    background: isCameraOff ? 'rgba(0,0,0,0.6)' : 'linear-gradient(135deg, rgba(122,58,237,0.3), rgba(0,0,0,0.8))',
-                    border: '2px solid rgba(122,58,237,0.3)',
-                  }}
-                >
-                  <span className="text-6xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-xs text-white/60">Connected</span>
-                </div>
-              </div>
-
-              {/* Partner */}
-              <div className="flex flex-col gap-2">
-                <div className="text-xs font-bold text-white/70 uppercase">Partner</div>
-                <div
-                  className="rounded-xl overflow-hidden flex items-center justify-center aspect-square"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(34,211,238,0.3), rgba(0,0,0,0.8))',
-                    border: '2px solid rgba(34,211,238,0.3)',
-                  }}
-                >
-                  <span className="text-6xl">🧑‍💻</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-white/60">Active</span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="h-px bg-white/5 my-2" />
-
-              {/* Control Buttons */}
-              <div className="flex flex-col gap-2">
+            <div
+              className="w-64 flex-shrink-0 flex flex-col gap-3 p-4 border-r"
+              style={{
+                background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                scrollBehavior: 'smooth',
+                overflow: 'hidden',
+              }}
+            >
+              <style>{`
+                .no-scrollbar {
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+                }
+                .no-scrollbar::-webkit-scrollbar {
+                  display: none;
+                  width: 0;
+                  height: 0;
+                }
+              `}</style>
+              <div className="overflow-y-auto flex-1 flex flex-col gap-3 no-scrollbar">
+                {/* Close Button */}
                 <motion.button
-                  onClick={onMute}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
+                  onClick={onClose}
+                  whileHover={{ scale: 1.15, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="self-end flex items-center justify-center rounded-full"
                   style={{
-                    background: isMuted ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.15)',
-                    border: `1px solid ${isMuted ? 'rgba(248,113,113,0.3)' : 'rgba(74,222,128,0.3)'}`,
-                    color: isMuted ? '#f87171' : '#4ade80',
+                    width: 32,
+                    height: 32,
+                    background: 'linear-gradient(135deg, rgba(248,113,113,0.3), rgba(239,68,68,0.2))',
+                    border: '1px solid rgba(248,113,113,0.4)',
+                    boxShadow: '0 4px 12px rgba(248,113,113,0.15)',
                   }}
                 >
-                  {isMuted ? <MicOff size={13} /> : <Mic size={13} />}
-                  <span>{isMuted ? 'Mute' : 'Mic'}</span>
+                  <X size={16} color="#fca5a5" />
                 </motion.button>
 
-                <motion.button
-                  onClick={onCamera}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
-                  style={{
-                    background: isCameraOff ? 'rgba(248,113,113,0.15)' : 'rgba(34,211,238,0.15)',
-                    border: `1px solid ${isCameraOff ? 'rgba(248,113,113,0.3)' : 'rgba(34,211,238,0.3)'}`,
-                    color: isCameraOff ? '#f87171' : '#22d3ee',
-                  }}
+                {/* You */}
+                <motion.div
+                  className="flex flex-col gap-2"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
                 >
-                  {isCameraOff ? <VideoOff size={13} /> : <Video size={13} />}
-                  <span>{isCameraOff ? 'Cam Off' : 'Cam'}</span>
-                </motion.button>
-
-                <motion.button
-                  onClick={onRecording}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
-                  style={{
-                    background: isRecording ? 'rgba(249,115,22,0.15)' : 'rgba(192,132,252,0.15)',
-                    border: `1px solid ${isRecording ? 'rgba(249,115,22,0.3)' : 'rgba(192,132,252,0.3)'}`,
-                    color: isRecording ? '#f97316' : '#c084fc',
-                  }}
-                >
-                  {isRecording ? <MonitorStop size={13} /> : <ScreenShare size={13} />}
-                  <span>{isRecording ? 'Stop' : 'Record'}</span>
-                </motion.button>
-
-                <motion.button
-                  onClick={onDisconnect}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(127,29,29,0.3), rgba(153,27,27,0.3))',
-                    border: '1px solid rgba(248,113,113,0.3)',
-                    color: '#fca5a5',
-                  }}
-                >
-                  <PhoneOff size={13} />
-                  <span>End Call</span>
-                </motion.button>
-              </div>
-
-              {/* Divider */}
-              <div className="h-px bg-white/5 my-2" />
-
-              {/* File Sharing */}
-              <button
-                onClick={() => setShowFiles(!showFiles)}
-                className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
-                style={{
-                  background: showFiles ? 'rgba(79,200,255,0.15)' : 'rgba(79,200,255,0.08)',
-                  border: '1px solid rgba(79,200,255,0.2)',
-                  color: '#4fc9ff',
-                }}
-              >
-                <span>📁</span>
-                <span>Files</span>
-              </button>
-
-              {/* Keyboard Share Toggle */}
-              <button
-                onClick={() => setKeyboardShareEnabled(!keyboardShareEnabled)}
-                className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
-                style={{
-                  background: keyboardShareEnabled ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.08)',
-                  border: '1px solid rgba(168,85,247,0.2)',
-                  color: '#a855f7',
-                }}
-              >
-                <span>⌨️</span>
-                <span>Share Input</span>
-              </button>
-
-              {/* Shared Files List */}
-              <AnimatePresence>
-                {showFiles && (
+                  <div className="text-xs font-bold text-white/60 uppercase tracking-wider">You</div>
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-1"
+                    whileHover={{ scale: 1.03 }}
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
+                    style={{
+                      background: isCameraOff
+                        ? 'linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6))'
+                        : 'linear-gradient(135deg, rgba(122,58,237,0.4), rgba(124,58,237,0.2))',
+                      border: `2px solid ${isCameraOff ? 'rgba(248,113,113,0.3)' : 'rgba(124,58,237,0.5)'}`,
+                      boxShadow: isCameraOff ? 'none' : '0 0 20px rgba(124,58,237,0.2)',
+                    }}
                   >
-                    {[
-                      { name: 'solution.js', size: '2.4 KB' },
-                      { name: 'notes.md', size: '1.8 KB' },
-                      { name: 'data.json', size: '4.2 KB' },
-                    ].map((file, idx) => (
-                      <div key={idx} className="p-2 rounded-lg flex items-center gap-2 text-xs" style={{ background: 'rgba(79,200,255,0.05)' }}>
-                        <span>📄</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white truncate">{file.name}</div>
-                          <div className="text-white/40 text-[9px]">{file.size}</div>
-                        </div>
-                        <button className="text-[9px]" style={{ color: '#4fc9ff' }}>⬇️</button>
+                    <span className="text-5xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
+
+                    {/* Control Buttons Overlay */}
+                    <div className="absolute inset-0 flex items-end justify-center p-2 bg-gradient-to-t from-black/80 to-transparent rounded-xl">
+                      <div className="flex gap-1.5">
+                        <motion.button
+                          onClick={onMute}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.85 }}
+                          className="flex items-center justify-center rounded-lg text-xs font-bold"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: isMuted
+                              ? 'linear-gradient(135deg, rgba(248,113,113,0.6), rgba(239,68,68,0.4))'
+                              : 'linear-gradient(135deg, rgba(74,222,128,0.6), rgba(34,197,94,0.4))',
+                            border: `1px solid ${isMuted ? 'rgba(248,113,113,0.8)' : 'rgba(74,222,128,0.8)'}`,
+                            color: isMuted ? '#fca5a5' : '#86efac',
+                          }}
+                          title={isMuted ? 'Unmute' : 'Mute'}
+                        >
+                          {isMuted ? <MicOff size={12} /> : <Mic size={12} />}
+                        </motion.button>
+
+                        <motion.button
+                          onClick={onCamera}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.85 }}
+                          className="flex items-center justify-center rounded-lg text-xs font-bold"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: isCameraOff
+                              ? 'linear-gradient(135deg, rgba(248,113,113,0.6), rgba(239,68,68,0.4))'
+                              : 'linear-gradient(135deg, rgba(34,211,238,0.6), rgba(6,182,212,0.4))',
+                            border: `1px solid ${isCameraOff ? 'rgba(248,113,113,0.8)' : 'rgba(34,211,238,0.8)'}`,
+                            color: isCameraOff ? '#fca5a5' : '#a5f3fc',
+                          }}
+                          title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                        >
+                          {isCameraOff ? <VideoOff size={12} /> : <Video size={12} />}
+                        </motion.button>
+
+                        <motion.button
+                          onClick={onRecording}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.85 }}
+                          className="flex items-center justify-center rounded-lg text-xs font-bold"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: isRecording
+                              ? 'linear-gradient(135deg, rgba(249,115,22,0.6), rgba(217,119,6,0.4))'
+                              : 'linear-gradient(135deg, rgba(192,132,252,0.6), rgba(168,85,247,0.4))',
+                            border: `1px solid ${isRecording ? 'rgba(249,115,22,0.8)' : 'rgba(192,132,252,0.8)'}`,
+                            color: isRecording ? '#fdba74' : '#d8b4fe',
+                          }}
+                          title={isRecording ? 'Stop Recording' : 'Start Recording'}
+                        >
+                          {isRecording ? <MonitorStop size={12} /> : <ScreenShare size={12} />}
+                        </motion.button>
+
+                        <motion.button
+                          onClick={onDisconnect}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.85 }}
+                          className="flex items-center justify-center rounded-lg text-xs font-bold"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: 'linear-gradient(135deg, rgba(248,113,113,0.7), rgba(239,68,68,0.5))',
+                            border: '1px solid rgba(248,113,113,0.8)',
+                            color: '#fca5a5',
+                          }}
+                          title="End Call"
+                        >
+                          <PhoneOff size={12} />
+                        </motion.button>
                       </div>
-                    ))}
+                    </div>
                   </motion.div>
-                )}
-              </AnimatePresence>
+                  <motion.div
+                    className="flex items-center gap-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                  >
+                    <motion.span
+                      className="w-2 h-2 rounded-full bg-green-500"
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    <span className="text-xs text-white/50">Connected</span>
+                  </motion.div>
+                </motion.div>
+
+                {/* Partner */}
+                <motion.div
+                  className="flex flex-col gap-2"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="text-xs font-bold text-white/60 uppercase tracking-wider">Partner</div>
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(34,211,238,0.4), rgba(6,182,212,0.2))',
+                      border: '2px solid rgba(34,211,238,0.5)',
+                      boxShadow: '0 0 20px rgba(34,211,238,0.2)',
+                    }}
+                  >
+                    <span className="text-5xl">🧑‍💻</span>
+                  </motion.div>
+                  <motion.div
+                    className="flex items-center gap-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25 }}
+                  >
+                    <motion.span
+                      className="w-2 h-2 rounded-full bg-green-500"
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
+                    />
+                    <span className="text-xs text-white/50">Active</span>
+                  </motion.div>
+                </motion.div>
+
+                {/* Divider */}
+                <motion.div
+                  className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                />
+
+                {/* File Sharing */}
+                <motion.button
+                  onClick={() => setShowFiles(!showFiles)}
+                  whileHover={{ scale: 1.02 }}
+                  className="w-full flex items-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: showFiles
+                      ? 'linear-gradient(135deg, rgba(79,200,255,0.25), rgba(34,211,238,0.1))'
+                      : 'linear-gradient(135deg, rgba(79,200,255,0.15), rgba(34,211,238,0.05))',
+                    border: `1.5px solid ${showFiles ? 'rgba(79,200,255,0.4)' : 'rgba(79,200,255,0.25)'}`,
+                    color: '#67e8f9',
+                  }}
+                >
+                  <span>📁</span>
+                  <span>Files</span>
+                  <span className="ml-auto text-[10px] opacity-50">{showFiles ? '▼' : '▶'}</span>
+                </motion.button>
+
+                {/* Keyboard Share Toggle */}
+                <motion.button
+                  onClick={() => setKeyboardShareEnabled(!keyboardShareEnabled)}
+                  whileHover={{ scale: 1.02 }}
+                  className="w-full flex items-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: keyboardShareEnabled
+                      ? 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(147,51,234,0.1))'
+                      : 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(147,51,234,0.05))',
+                    border: `1.5px solid ${keyboardShareEnabled ? 'rgba(168,85,247,0.4)' : 'rgba(168,85,247,0.25)'}`,
+                    color: '#d8b4fe',
+                  }}
+                >
+                  <span>⌨️</span>
+                  <span>Share Input</span>
+                  <span className="ml-auto text-[10px] opacity-50">{keyboardShareEnabled ? '✓' : '○'}</span>
+                </motion.button>
+
+                {/* Shared Files List */}
+                <AnimatePresence>
+                  {showFiles && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-1.5"
+                    >
+                      {[
+                        { name: 'solution.js', size: '2.4 KB' },
+                        { name: 'notes.md', size: '1.8 KB' },
+                        { name: 'data.json', size: '4.2 KB' },
+                      ].map((file, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          whileHover={{ x: 2 }}
+                          className="p-2.5 rounded-lg flex items-center gap-2 text-xs"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(79,200,255,0.12), rgba(34,211,238,0.05))',
+                            border: '1px solid rgba(79,200,255,0.2)',
+                          }}
+                        >
+                          <span>📄</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white/90 truncate font-medium">{file.name}</div>
+                            <div className="text-white/40 text-[8px]">{file.size}</div>
+                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.15 }}
+                            className="text-[10px] opacity-60 hover:opacity-100 transition-opacity"
+                            style={{ color: '#67e8f9' }}
+                          >
+                            ⬇️
+                          </motion.button>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Center: Code Editor (Top) + Output (Bottom) */}
@@ -1264,9 +1369,9 @@ function ChatDrawer({
 
             {/* Right Sidebar: Chat */}
             <div className="w-80 flex-shrink-0 flex flex-col bg-gradient-to-b from-black/50 to-black/30 border-l border-white/10 overflow-hidden">
-              {/* Header */}
+              {/* Header with Profile */}
               <div className="px-4 py-3 border-b border-white/10 bg-black/40 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #22d3ee, #06b6d4)' }}>
                       <MessageSquare size={16} color="white" />
@@ -1280,6 +1385,36 @@ function ChatDrawer({
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                 </div>
+
+                {/* Partner Profile Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34,211,238,0.1), rgba(6,182,212,0.05))',
+                    border: '1px solid rgba(34,211,238,0.2)',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34,211,238,0.3), rgba(6,182,212,0.2))',
+                        border: '2px solid rgba(34,211,238,0.5)',
+                      }}
+                    >
+                      🧑‍💻
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-white">Alex Chen</div>
+                      <div className="text-[10px] text-white/50 flex items-center gap-1">
+                        <span>⭐ 4.8 • Level 12</span>
+                      </div>
+                      <div className="text-[9px] text-green-400 font-semibold">● Active now</div>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
 
               {/* Chat Messages */}
