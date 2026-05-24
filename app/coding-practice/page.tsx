@@ -1484,169 +1484,215 @@ function CollaborationArena({
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
-      {/* Left: Problem statement */}
-      <div className="w-60 flex-shrink-0 overflow-y-auto">
-        <ProblemStatement />
-      </div>
-
-      {/* Center: Code Editor */}
-      <div className="flex-1 overflow-hidden min-w-0">
-        <CodeEditorPanel
-          codeRunState={codeRunState}
-          terminalLines={terminalLines}
-          onRun={onRunCode}
-          onSubmit={onSubmit}
-          showTerminal={showTerminal}
-          onToggleTerminal={() => setShowTerminal(!showTerminal)}
-          elapsed={elapsed}
-          isRecording={isRecording}
-        />
-      </div>
-
-      {/* Right: Steps + Video + Chat */}
-      <div className="flex flex-col gap-3 flex-shrink-0 w-64 overflow-y-auto">
-        <StepsBar current={currentStep} onStep={() => {}} />
-
-        <VideoCallBar
-          isAnonymous={isAnonymous}
-          isMuted={isMuted}
-          isCameraOff={isCameraOff}
-          isRecording={isRecording}
-          elapsed={elapsed}
-          onMute={onMute}
-          onCamera={onCamera}
-          onRecording={onRecording}
-          onDisconnect={onDisconnect}
-        />
-
-        <div className="flex gap-2 w-full relative">
-          <motion.button
-            onClick={() => setChatOpen(true)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
+      {/* Left Sidebar: You + Partner + Controls */}
+      <div className="w-56 flex-shrink-0 flex flex-col bg-black/30 rounded-2xl p-3 backdrop-blur-xl border border-white/5">
+        {/* You (Top) */}
+        <div className="flex-1 flex flex-col">
+          <div className="text-xs font-bold text-white/60 mb-2">YOU</div>
+          <div
+            className="rounded-xl overflow-hidden flex items-center justify-center flex-1 mb-3"
             style={{
-              background: 'rgba(244,114,182,0.08)',
-              border: '1px solid rgba(244,114,182,0.25)',
+              background: 'linear-gradient(135deg, rgba(122,58,237,0.2), rgba(0,0,0,0.7))',
+              border: '1px solid rgba(122,58,237,0.2)',
+              minHeight: 140,
             }}
           >
-            <MessageSquare size={15} style={{ color: '#f472b6' }} />
-            <span style={{ color: '#f472b6' }}>Chat</span>
-            <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full" style={{ background: '#4ade80' }} />
+            <span className="text-5xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
+          </div>
+          <div className="text-xs font-semibold text-white mb-1">You</div>
+          <div className="text-[10px] text-white/50 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Connected
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="my-4 h-px bg-white/5" />
+
+        {/* Partner (Bottom) */}
+        <div className="flex-1 flex flex-col">
+          <div className="text-xs font-bold text-white/60 mb-2">PARTNER</div>
+          <div
+            className="rounded-xl overflow-hidden flex items-center justify-center flex-1 mb-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34,211,238,0.2), rgba(0,0,0,0.7))',
+              border: '1px solid rgba(34,211,238,0.2)',
+              minHeight: 140,
+            }}
+          >
+            <span className="text-5xl">🧑‍💻</span>
+          </div>
+          <div className="text-xs font-semibold text-white mb-1">Alex</div>
+          <div className="text-[10px] text-white/50 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            Active
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="my-4 h-px bg-white/5" />
+
+        {/* Control Buttons */}
+        <div className="flex flex-col gap-2">
+          <motion.button
+            onClick={onMute}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
+            style={{
+              background: isMuted ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.15)',
+              border: `1px solid ${isMuted ? 'rgba(248,113,113,0.3)' : 'rgba(74,222,128,0.3)'}`,
+              color: isMuted ? '#f87171' : '#4ade80',
+            }}
+          >
+            {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+            <span>{isMuted ? 'Mute' : 'Mic'}</span>
           </motion.button>
 
-          <div className="relative">
-            <motion.button
-              onClick={() => setMusicOpen(!musicOpen)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center rounded-full flex-shrink-0"
-              style={{
-                width: 44,
-                height: 44,
-                background: musicOpen ? 'rgba(0,230,118,0.25)' : 'rgba(0,230,118,0.12)',
-                border: `1px solid ${musicOpen ? 'rgba(0,230,118,0.5)' : 'rgba(0,230,118,0.3)'}`,
-              }}
-              title="Music Player"
-            >
-              <Music2 size={18} color="#00e676" />
-            </motion.button>
+          <motion.button
+            onClick={onCamera}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
+            style={{
+              background: isCameraOff ? 'rgba(248,113,113,0.15)' : 'rgba(34,211,238,0.15)',
+              border: `1px solid ${isCameraOff ? 'rgba(248,113,113,0.3)' : 'rgba(34,211,238,0.3)'}`,
+              color: isCameraOff ? '#f87171' : '#22d3ee',
+            }}
+          >
+            {isCameraOff ? <VideoOff size={14} /> : <Video size={14} />}
+            <span>{isCameraOff ? 'Cam Off' : 'Camera'}</span>
+          </motion.button>
 
-            {/* Music Player Popup */}
-            <AnimatePresence>
-              {musicOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="fixed rounded-2xl overflow-hidden"
-                  style={{
-                    width: 300,
-                    background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
-                    border: '1px solid rgba(0,230,118,0.2)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(0,230,118,0.15)',
-                    zIndex: 99999,
-                    bottom: '65px',
-                    right: '12px',
-                  }}
-                >
-                  {/* Header */}
-                  <div
-                    className="flex items-center justify-between px-4 py-3"
-                    style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Music2 size={14} color="#00e676" />
-                      <span className="text-xs font-bold text-white">MUSIC</span>
-                    </div>
-                    <motion.button
-                      onClick={() => setMusicOpen(false)}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      style={{ color: '#b1bad3' }}
-                    >
-                      <X size={12} />
-                    </motion.button>
-                  </div>
+          <motion.button
+            onClick={onRecording}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
+            style={{
+              background: isRecording ? 'rgba(249,115,22,0.15)' : 'rgba(192,132,252,0.15)',
+              border: `1px solid ${isRecording ? 'rgba(249,115,22,0.3)' : 'rgba(192,132,252,0.3)'}`,
+              color: isRecording ? '#f97316' : '#c084fc',
+            }}
+          >
+            {isRecording ? <MonitorStop size={14} /> : <ScreenShare size={14} />}
+            <span>{isRecording ? 'Stop' : 'Record'}</span>
+          </motion.button>
 
-                  {/* Music List */}
-                  <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
-                    {[
-                      { id: 1, title: 'Casino Royale Vibes', artist: 'Lo-Fi Beats' },
-                      { id: 2, title: 'Lucky Night Chill', artist: 'Ambient Sounds' },
-                      { id: 3, title: 'High Roller Mix', artist: 'Deep House' },
-                      { id: 4, title: 'Vegas Nights', artist: 'Electronic Beats' },
-                      { id: 5, title: 'Neon Dreams', artist: 'Synthwave' },
-                      { id: 6, title: 'Midnight Jazz', artist: 'Smooth Jazz' },
-                    ].map((track, idx) => (
-                      <motion.button
-                        key={track.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        className="w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors"
-                        style={{
-                          background: idx === 0 ? 'rgba(0,230,118,0.1)' : 'rgba(0,230,118,0.02)',
-                          border: `0.5px solid ${idx === 0 ? 'rgba(0,230,118,0.3)' : 'rgba(0,230,118,0.1)'}`,
-                        }}
-                        whileHover={{ backgroundColor: 'rgba(0,230,118,0.15)' }}
-                      >
-                        <div
-                          className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(0,230,118,0.1)' }}
-                        >
-                          <Play size={12} color="#00e676" fill="#00e676" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-white truncate">{track.title}</div>
-                          <div className="text-[9px] text-white/50 truncate">{track.artist}</div>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <motion.button
+            onClick={onDisconnect}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold"
+            style={{
+              background: 'linear-gradient(135deg, rgba(127,29,29,0.3), rgba(153,27,27,0.3))',
+              border: '1px solid rgba(248,113,113,0.3)',
+              color: '#fca5a5',
+            }}
+          >
+            <PhoneOff size={14} />
+            <span>End Call</span>
+          </motion.button>
         </div>
       </div>
 
-      <ChatDrawer
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        messages={chatMessages}
-        input={chatInput}
-        onInput={onChatInput}
-        onSend={onSendChat}
-        isMuted={isMuted}
-        isCameraOff={isCameraOff}
-        isRecording={isRecording}
-        onMute={onMute}
-        onCamera={onCamera}
-        onRecording={onRecording}
-        onDisconnect={onDisconnect}
-      />
+      {/* Center: Code Editor + Problem */}
+      <div className="flex-1 flex flex-col gap-3 overflow-hidden min-w-0">
+        {/* Problem Statement (Collapsible) */}
+        <details className="w-full bg-black/30 rounded-xl p-3 backdrop-blur-xl border border-white/5 text-xs">
+          <summary className="cursor-pointer font-bold text-white/80 hover:text-white">Problem Statement</summary>
+          <div className="mt-2 text-white/60 max-h-40 overflow-y-auto">
+            <ProblemStatement />
+          </div>
+        </details>
+
+        {/* Code Editor */}
+        <div className="flex-1 overflow-hidden">
+          <CodeEditorPanel
+            codeRunState={codeRunState}
+            terminalLines={terminalLines}
+            onRun={onRunCode}
+            onSubmit={onSubmit}
+            showTerminal={showTerminal}
+            onToggleTerminal={() => setShowTerminal(!showTerminal)}
+            elapsed={elapsed}
+            isRecording={isRecording}
+          />
+        </div>
+      </div>
+
+      {/* Right Sidebar: Chat */}
+      <div className="w-80 flex-shrink-0 flex flex-col bg-black/30 rounded-2xl backdrop-blur-xl border border-white/5 overflow-hidden">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare size={16} style={{ color: '#22d3ee' }} />
+            <span className="text-sm font-bold text-white">Chat</span>
+            <span className="relative flex w-2 h-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#4ade80' }} />
+              <span className="relative inline-flex rounded-full w-2 h-2" style={{ background: '#4ade80' }} />
+            </span>
+          </div>
+          <motion.button
+            onClick={() => setChatOpen(false)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+          >
+            <X size={14} />
+          </motion.button>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col justify-end">
+          <AnimatePresence initial={false}>
+            {chatMessages.map(m => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={`flex gap-2 ${m.me ? 'flex-row-reverse' : ''}`}
+              >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs" style={{ background: `${m.color}18` }}>
+                  {m.avatar}
+                </div>
+                <div className={`flex flex-col gap-1 max-w-[200px] ${m.me ? 'items-end' : ''}`}>
+                  <span className="text-xs font-semibold" style={{ color: m.color }}>{m.user}</span>
+                  <div
+                    className="px-3 py-1.5 rounded-lg text-xs text-white leading-relaxed"
+                    style={{
+                      background: m.me ? `${m.color}20` : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${m.color}22`,
+                    }}
+                  >
+                    {m.msg}
+                  </div>
+                  <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{m.time}</span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Chat Input */}
+        <div className="p-3 border-t border-white/5">
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <input
+              value={chatInput}
+              onChange={e => onChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && onSendChat()}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-xs text-white outline-none placeholder-white/25"
+            />
+            <motion.button onClick={onSendChat} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }} style={{ color: '#22d3ee' }}>
+              <Send size={13} />
+            </motion.button>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }
