@@ -1230,92 +1230,11 @@ function ChatDrawer({
 
                 {/* Divider */}
                 <motion.div
-                  className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-1"
+                  className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 />
-
-                {/* File Sharing */}
-                <motion.button
-                  onClick={() => setShowFiles(!showFiles)}
-                  whileHover={{ scale: 1.02 }}
-                  className="w-full flex items-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: showFiles
-                      ? 'linear-gradient(135deg, rgba(79,200,255,0.25), rgba(34,211,238,0.1))'
-                      : 'linear-gradient(135deg, rgba(79,200,255,0.15), rgba(34,211,238,0.05))',
-                    border: `1.5px solid ${showFiles ? 'rgba(79,200,255,0.4)' : 'rgba(79,200,255,0.25)'}`,
-                    color: '#67e8f9',
-                  }}
-                >
-                  <span>📁</span>
-                  <span>Files</span>
-                  <span className="ml-auto text-[10px] opacity-50">{showFiles ? '▼' : '▶'}</span>
-                </motion.button>
-
-                {/* Keyboard Share Toggle */}
-                <motion.button
-                  onClick={() => setKeyboardShareEnabled(!keyboardShareEnabled)}
-                  whileHover={{ scale: 1.02 }}
-                  className="w-full flex items-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: keyboardShareEnabled
-                      ? 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(147,51,234,0.1))'
-                      : 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(147,51,234,0.05))',
-                    border: `1.5px solid ${keyboardShareEnabled ? 'rgba(168,85,247,0.4)' : 'rgba(168,85,247,0.25)'}`,
-                    color: '#d8b4fe',
-                  }}
-                >
-                  <span>⌨️</span>
-                  <span>Share Input</span>
-                  <span className="ml-auto text-[10px] opacity-50">{keyboardShareEnabled ? '✓' : '○'}</span>
-                </motion.button>
-
-                {/* Shared Files List */}
-                <AnimatePresence>
-                  {showFiles && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-1.5"
-                    >
-                      {[
-                        { name: 'solution.js', size: '2.4 KB' },
-                        { name: 'notes.md', size: '1.8 KB' },
-                        { name: 'data.json', size: '4.2 KB' },
-                      ].map((file, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          whileHover={{ x: 2 }}
-                          className="p-2.5 rounded-lg flex items-center gap-2 text-xs"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(79,200,255,0.12), rgba(34,211,238,0.05))',
-                            border: '1px solid rgba(79,200,255,0.2)',
-                          }}
-                        >
-                          <span>📄</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white/90 truncate font-medium">{file.name}</div>
-                            <div className="text-white/40 text-[8px]">{file.size}</div>
-                          </div>
-                          <motion.button
-                            whileHover={{ scale: 1.15 }}
-                            className="text-[10px] opacity-60 hover:opacity-100 transition-opacity"
-                            style={{ color: '#67e8f9' }}
-                          >
-                            ⬇️
-                          </motion.button>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
 
