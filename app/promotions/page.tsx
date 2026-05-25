@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Gift, Clock, Zap, Star, Trophy, Flame, ChevronRight, Sparkles, BookOpen, Play } from 'lucide-react';
+import { Gift, Clock, Zap, Star, Trophy, Flame, Sparkles, Play } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
-import { promoToLearning } from '@/data/learning';
 import GameDetailFullscreen from '@/components/overlays/GameDetailFullscreen';
 
 const promos = [
@@ -123,13 +121,6 @@ function TimerBlock({ value, label }: { value: number; label: string }) {
 }
 
 function PromoCard({ promo, index, onPlay }: { promo: typeof promos[0]; index: number; onPlay: () => void }) {
-  const router = useRouter();
-  const learningSlug = promoToLearning[promo.id];
-
-  function handleLearnClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (learningSlug) router.push(`/learning/${learningSlug}`);
-  }
 
   return (
     <motion.div
@@ -203,48 +194,36 @@ function PromoCard({ promo, index, onPlay }: { promo: typeof promos[0]; index: n
           </div>
         </div>
 
-        {/* CTA row */}
-        <div className="flex gap-2 mb-2">
+        {/* Eye-catching Play button */}
+        <div className="flex justify-center mb-2">
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-black flex items-center justify-center gap-1.5"
-            style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}
-          >
-            {promo.cta}
-            <ChevronRight size={14} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.08, boxShadow: `0 0 18px ${promo.badgeColor}80` }}
-            whileTap={{ scale: 0.94 }}
+            animate={{
+              boxShadow: [
+                `0 0 0px 0px ${promo.badgeColor}`,
+                `0 0 20px 6px ${promo.badgeColor}60`,
+                `0 0 0px 0px ${promo.badgeColor}`,
+              ],
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+              scale: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+            }}
+            whileHover={{
+              scale: 1.15,
+              boxShadow: `0 0 30px 10px ${promo.badgeColor}80`,
+            }}
+            whileTap={{ scale: 0.92 }}
             onClick={(e) => { e.stopPropagation(); onPlay(); }}
-            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-white transition-all"
             style={{
-              background: `${promo.badgeColor}22`,
-              border: `1.5px solid ${promo.badgeColor}55`,
+              background: `linear-gradient(135deg, ${promo.badgeColor}dd, ${promo.badgeColor}99)`,
+              border: `2px solid ${promo.badgeColor}`,
             }}
           >
-            <Play size={15} fill={promo.badgeColor} color={promo.badgeColor} />
+            <Play size={28} fill="currentColor" />
           </motion.button>
         </div>
-
-        {/* Learn button */}
-        {learningSlug && (
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleLearnClick}
-            className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5"
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.35)',
-              color: 'rgba(255,255,255,0.85)',
-              border: '1px solid rgba(255,255,255,0.18)',
-            }}
-          >
-            <BookOpen size={14} />
-            Start Learning
-          </motion.button>
-        )}
       </div>
     </motion.div>
   );

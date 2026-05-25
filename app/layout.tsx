@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import MatchAnimation from "@/components/MatchAnimation";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  variable: '--font-dancing',
+  weight: ['700'],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,9 +35,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
+      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable, dancingScript.variable)}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <MatchAnimation />
+        {children}
+      </body>
     </html>
   );
 }

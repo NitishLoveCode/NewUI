@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Menu, Zap, LogOut, User } from 'lucide-react';
+import { Menu, LogOut, User } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import SiteLogo from '@/components/SiteLogo';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -86,23 +87,9 @@ export default function Navbar({
       {/* Right section: fills remaining content area (desktop only) */}
       <div className="hidden md:flex flex-1 items-center justify-between px-4 h-full">
         {/* Brand */}
-        <Link href="/" aria-label="Go to Stake home">
-          <motion.div className="flex items-center gap-3 cursor-pointer" whileHover={{ scale: 1.03 }}>
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{
-                background: 'linear-gradient(135deg, #00e676, #00b84d)',
-                boxShadow: '0 0 24px rgba(0,230,118,0.35)',
-              }}
-            >
-              <Zap size={18} fill="#000" className="text-black" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-[1.28rem] font-black italic tracking-tight text-white">ilovedsa.com</span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: '#00e676' }}>
-                Play smart every day
-              </span>
-            </div>
+        <Link href="/" aria-label="Go to ilovedsa.com home">
+          <motion.div className="flex items-center gap-2 cursor-pointer" whileHover={{ scale: 1.03 }}>
+            <SiteLogo size="md" />
           </motion.div>
         </Link>
 
@@ -181,23 +168,9 @@ export default function Navbar({
 
       {/* Mobile: logo + auth buttons or profile */}
       <div className="flex md:hidden items-center justify-between w-full px-4">
-        <Link href="/" aria-label="Go to Stake home">
-          <motion.div className="flex items-center gap-2.5 cursor-pointer" whileHover={{ scale: 1.03 }}>
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl"
-              style={{
-                background: 'linear-gradient(135deg, #00e676, #00b84d)',
-                boxShadow: '0 0 20px rgba(0,230,118,0.3)',
-              }}
-            >
-              <Zap size={16} fill="#000" className="text-black" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-base font-black italic tracking-tight text-white">ilovedsa.com</span>
-              <span className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#00e676' }}>
-                Learn and win
-              </span>
-            </div>
+        <Link href="/" aria-label="Go to ilovedsa.com home">
+          <motion.div className="flex items-center gap-2 cursor-pointer" whileHover={{ scale: 1.03 }}>
+            <SiteLogo size="sm" />
           </motion.div>
         </Link>
 
