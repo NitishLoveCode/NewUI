@@ -1,0 +1,401 @@
+Build a premium Linux Command Learning Game UI using my existing tech stack and package.json dependencies only.
+
+IMPORTANT:
+Do NOT install unnecessary packages.
+Use only the packages already available in my project.
+
+====================================================
+MY EXISTING STACK
+=================
+
+Framework:
+
+* Next.js 16 App Router
+* React 19
+* TypeScript
+* Tailwind CSS v4
+
+Already Available Packages:
+
+* Framer Motion
+* Lucide React
+* Huge Icons
+* Monaco Editor
+* Swiper
+* Shadcn
+* Radix UI
+* clsx
+* tailwind-merge
+
+====================================================
+PROJECT GOAL
+============
+
+Create a futuristic Linux command learning game UI.
+
+The UI should feel like:
+
+* Hacker simulator
+* Coding game
+* Cyberpunk terminal
+* Gamified learning platform
+* Premium interactive experience
+
+Reference vibe:
+"Duolingo + Cyberpunk + Hacker Terminal + Coding Game"
+
+====================================================
+VERY IMPORTANT UI RULE
+======================
+
+ONLY ONE QUESTION SHOULD BE VISIBLE AT A TIME.
+
+Do NOT show list of questions.
+
+Flow should feel like:
+Question → Answer → Result Animation → Explanation → Next Question
+
+Like a real game experience.
+
+====================================================
+QUESTION FLOW
+=============
+
+1. User sees ONE question only
+2. User answers question
+3. Show animation result
+4. If explanation exists, show explanation section
+5. Show Next Question button
+6. Smooth transition to next question
+
+====================================================
+QUESTION TYPES
+==============
+
+=================================
+TYPE 1: MCQ QUESTIONS
+=====================
+
+Example:
+Which command is used to list files in Linux?
+
+Options:
+
+* ls
+* pwd
+* mkdir
+* touch
+
+Features:
+
+* Animated option cards
+* Hover glow effect
+* Selected state animation
+* Correct answer glow green
+* Wrong answer shake red
+* Disable options after answer selected
+
+=================================
+TYPE 2: MANUAL INPUT QUESTIONS
+==============================
+
+Example:
+Type the Linux command used to create a new folder.
+
+Input should look like terminal:
+
+user@linux:~$
+
+Features:
+
+* Terminal style input
+* Blinking cursor
+* Green neon border
+* Typing animation
+* Enter key support
+* Validate typed answer
+
+====================================================
+AFTER ANSWER EXPERIENCE
+=======================
+
+=================================
+IF ANSWER IS CORRECT
+====================
+
+Show:
+
+* Large animated success popup
+* XP gained animation
+* Neon green glow
+* Floating particles
+* Celebration motion effect
+* Success badge animation
+
+Popup examples:
+
+* Excellent!
+* Linux Master!
+* Correct Command!
+* Hacker Level Up!
+* Command Ninja!
+
+Animations:
+
+* Scale animation
+* Glow pulse
+* Floating text
+* Progress XP fill animation
+
+=================================
+IF ANSWER IS WRONG
+==================
+
+Show:
+
+* Red glow
+* Shake effect
+* Hint text
+* Retry message
+* Smooth error animation
+
+====================================================
+EXPLANATION SECTION
+===================
+
+AFTER answering question,
+if explanation exists then show expandable animated explanation card.
+
+Example:
+
+Explanation:
+The "ls" command is used to display all files and folders inside the current directory.
+
+UI Requirements:
+
+* Glassmorphism card
+* Smooth slide animation
+* Terminal themed design
+* Syntax highlighted command block
+* Small Linux icon
+* Fade-in animation
+
+====================================================
+MAIN LAYOUT
+===========
+
+Desktop Layout:
+
+* Center focused question card
+* Background cyberpunk terminal
+* Animated floating elements
+
+Mobile Layout:
+
+* Fully responsive
+* Large touch friendly options
+* Sticky bottom action buttons
+
+====================================================
+VISUAL DESIGN
+=============
+
+Theme:
+
+* Dark hacker theme
+* Neon green
+* Cyan accents
+* Purple glow effects
+* Glassmorphism
+* Terminal aesthetic
+
+Background:
+
+* Animated grid
+* Floating particles
+* Subtle matrix rain effect
+* Glowing circles
+* Gradient overlays
+
+====================================================
+TOP SECTION
+===========
+
+Create top game status bar with:
+
+* XP Progress
+* Level
+* Current streak
+* Hearts/Lives
+* Coins
+* Difficulty badge
+
+Make it animated and premium.
+
+====================================================
+SIDEBAR
+=======
+
+Desktop sidebar with:
+
+* Dashboard
+* Learn
+* Practice
+* Challenges
+* Achievements
+* Leaderboard
+* Settings
+
+Icons should use:
+
+* Huge Icons
+* Lucide React
+
+Sidebar should:
+
+* Collapse smoothly
+* Glow on hover
+* Animated active state
+
+====================================================
+QUESTION CARD DESIGN
+====================
+
+Question card should contain:
+
+* Difficulty badge
+* Question number
+* Question text
+* Timer/progress
+* Answer area
+* Result area
+* Explanation area
+
+Card Style:
+
+* Glassmorphism
+* Neon borders
+* Shadow glow
+* Rounded 2xl
+* Smooth animations
+
+====================================================
+ANIMATIONS
+==========
+
+Use Framer Motion heavily.
+
+Need:
+
+* Question transitions
+* Card animations
+* Hover scaling
+* Smooth fade effects
+* Success pulse
+* Wrong shake
+* XP progress animation
+* Button hover motion
+* Floating icons
+* Slide transitions
+
+====================================================
+MONACO EDITOR USAGE
+===================
+
+For advanced typing challenges:
+Use Monaco Editor terminal-like mini editor.
+
+Examples:
+
+* Write chmod command
+* Write grep command
+* Write navigation command
+
+Editor theme:
+
+* Dark terminal
+* Green cursor
+* Minimal UI
+
+====================================================
+DUMMY QUESTIONS
+===============
+
+Create at least 10 demo Linux questions.
+
+Include:
+
+* ls
+* pwd
+* cd
+* mkdir
+* rm
+* cp
+* mv
+* chmod
+* grep
+* touch
+
+Mix:
+
+* MCQ
+* Manual input
+* Monaco terminal challenge
+
+====================================================
+FILE STRUCTURE
+==============
+
+Create clean scalable architecture.
+
+Suggested structure:
+
+/components/game
+/components/ui
+/components/layout
+/data
+/types
+/hooks
+/lib
+
+====================================================
+CODE QUALITY
+============
+
+Requirements:
+
+* Reusable components
+* Clean TypeScript
+* Proper interfaces
+* Responsive design
+* Optimized animations
+* Production-ready code
+* Modern coding standards
+
+====================================================
+IMPORTANT UX DETAILS
+====================
+
+* Buttons must feel tactile
+* Hover effects should feel alive
+* Transitions must be smooth
+* UI should feel addictive like a real game
+* Do not overload screen
+* Focus user attention on current question only
+
+====================================================
+FINAL EXPERIENCE
+================
+
+The final UI should feel like:
+"A premium Linux learning game made by a AAA gaming company for developers."
+
+The experience must feel:
+
+* Interactive
+* Smooth
+* Addictive
+* Futuristic
+* Premium
+* Hacker themed
+* Visually stunning
