@@ -1389,12 +1389,40 @@ function ChatDrawer({
             </div>
 
             {/* Right Sidebar: Chat */}
-            <div className="w-80 flex-shrink-0 flex flex-col bg-gradient-to-b from-black/50 to-black/30 border-l border-white/10 overflow-hidden">
+            <motion.div
+              className="w-80 flex-shrink-0 flex flex-col border-l overflow-hidden"
+              style={{
+                borderColor: 'rgba(88,166,255,0.15)',
+                background: 'linear-gradient(180deg, #0d1117 0%, #161b22 100%)',
+                height: '100%',
+              }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <style>{`
+                .chat-scrollable {
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+                }
+                .chat-scrollable::-webkit-scrollbar {
+                  display: none;
+                  width: 0;
+                  height: 0;
+                }
+              `}</style>
+
               {/* Header with Profile */}
-              <div className="px-4 py-3 border-b border-white/10 bg-black/40 backdrop-blur-sm">
+              <div
+                className="px-4 py-4 border-b flex-shrink-0"
+                style={{
+                  borderColor: 'rgba(88,166,255,0.15)',
+                  background: 'linear-gradient(180deg, rgba(88,166,255,0.08), transparent)',
+                }}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #22d3ee, #06b6d4)' }}>
+                    <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #3b82f6, #1e40af)' }}>
                       <MessageSquare size={16} color="white" />
                     </div>
                     <div>
@@ -1402,78 +1430,87 @@ function ChatDrawer({
                       <span className="text-[10px] text-white/50">2 online</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  </div>
+                  <motion.div
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: '#4ade80' }}
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
                 </div>
 
                 {/* Partner Profile Card */}
                 <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-xl"
+                  className="p-3 rounded-lg border"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(34,211,238,0.1), rgba(6,182,212,0.05))',
-                    border: '1px solid rgba(34,211,238,0.2)',
+                    background: 'rgba(30,58,138,0.2)',
+                    borderColor: 'rgba(59,130,246,0.3)',
                   }}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
                 >
                   <div className="flex items-center gap-2">
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(34,211,238,0.3), rgba(6,182,212,0.2))',
-                        border: '2px solid rgba(34,211,238,0.5)',
+                        background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(29,78,216,0.2))',
+                        border: '1.5px solid rgba(59,130,246,0.4)',
                       }}
                     >
                       🧑‍💻
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-white">Alex Chen</div>
-                      <div className="text-[10px] text-white/50 flex items-center gap-1">
+                      <div className="text-[9px] text-blue-300 flex items-center gap-1">
                         <span>⭐ 4.8 • Level 12</span>
                       </div>
-                      <div className="text-[9px] text-green-400 font-semibold">● Active now</div>
+                      <div className="text-[8px] text-green-400 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                        Active now
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               </div>
 
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col justify-end">
+              {/* Chat Messages - Scrollable */}
+              <div className="flex-1 overflow-y-scroll min-h-0 p-3 space-y-3 flex flex-col justify-end chat-scrollable" style={{ scrollBehavior: 'smooth' }}>
                 <AnimatePresence initial={false}>
                   {messages.map((m, idx) => (
                     <motion.div
                       key={m.id}
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10 }}
                       transition={{ delay: idx * 0.05 }}
-                      className={`flex gap-2.5 ${m.me ? 'flex-row-reverse' : ''}`}
+                      className={`flex gap-2 flex-shrink-0 ${m.me ? 'flex-row-reverse' : ''}`}
                     >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold shadow-lg"
+                      <motion.div
+                        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
                         style={{
-                          background: `linear-gradient(135deg, ${m.color}40, ${m.color}20)`,
-                          border: `2px solid ${m.color}60`
+                          background: `${m.color}20`,
+                          border: `1.5px solid ${m.color}60`,
                         }}
+                        whileHover={{ scale: 1.1 }}
                       >
                         {m.avatar}
-                      </div>
-                      <div className={`flex flex-col gap-1 max-w-[210px] ${m.me ? 'items-end' : 'items-start'}`}>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] font-bold" style={{ color: m.color }}>
+                      </motion.div>
+                      <div className={`flex flex-col gap-1 max-w-[200px] flex-shrink-0 ${m.me ? 'items-end' : 'items-start'}`}>
+                        <div className="flex items-center gap-1.5 px-2">
+                          <span className="text-[10px] font-bold" style={{ color: m.color }}>
                             {m.user}
                           </span>
-                          <span className="text-[8px] text-white/40">{m.time}</span>
+                          <span className="text-[7px] text-white/40">{m.time}</span>
                         </div>
                         <motion.div
                           whileHover={{ scale: 1.02 }}
-                          className="px-3 py-2 rounded-xl text-xs text-white leading-relaxed shadow-md backdrop-blur-sm"
+                          className="px-3 py-2 rounded-lg text-xs leading-relaxed break-words"
                           style={{
                             background: m.me
-                              ? `linear-gradient(135deg, ${m.color}40, ${m.color}20)`
-                              : 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                            border: `1.5px solid ${m.me ? m.color + '50' : 'rgba(255,255,255,0.1)'}`,
-                            boxShadow: m.me ? `0 8px 16px ${m.color}20` : '0 4px 12px rgba(0,0,0,0.2)',
+                              ? `${m.color}20`
+                              : 'rgba(255,255,255,0.08)',
+                            border: `1px solid ${m.me ? m.color + '30' : 'rgba(255,255,255,0.1)'}`,
+                            color: m.me ? m.color : '#e2e8f0',
                           }}
                         >
                           {m.msg}
@@ -1482,41 +1519,62 @@ function ChatDrawer({
                     </motion.div>
                   ))}
                 </AnimatePresence>
-                <div ref={bottomRef} />
+                <div ref={bottomRef} className="flex-shrink-0" />
               </div>
 
+              {/* AI Suggestions (Optional) */}
+              <motion.div
+                className="px-3 py-2 border-t text-[9px] text-white/50 flex-shrink-0"
+                style={{ borderColor: 'rgba(88,166,255,0.1)' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px]">✨ AI Typing...</span>
+                  <motion.div
+                    className="flex gap-1"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    <div className="w-1 h-1 rounded-full bg-blue-400" />
+                    <div className="w-1 h-1 rounded-full bg-blue-400" />
+                    <div className="w-1 h-1 rounded-full bg-blue-400" />
+                  </motion.div>
+                </div>
+              </motion.div>
+
               {/* Chat Input */}
-              <div className="px-3 py-3 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+              <div className="px-3 py-3 border-t flex-shrink-0" style={{ borderColor: 'rgba(88,166,255,0.15)' }}>
                 <div
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all focus-within:ring-2"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all focus-within:border-blue-400/60"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(34,211,238,0.1), rgba(255,255,255,0.05))',
-                    border: '1.5px solid rgba(34,211,238,0.3)',
-                    boxShadow: '0 4px 12px rgba(34,211,238,0.1)',
+                    background: 'rgba(30,41,59,0.5)',
+                    borderColor: 'rgba(88,166,255,0.2)',
                   }}
                 >
                   <input
                     value={input}
                     onChange={e => onInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && onSend()}
-                    placeholder="Type your message..."
+                    placeholder="Type message..."
                     className="flex-1 bg-transparent text-xs text-white outline-none placeholder-white/40 font-medium"
                   />
                   <motion.button
                     onClick={onSend}
-                    whileHover={{ scale: 1.2, rotate: 5 }}
+                    whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
                     className="p-1.5 rounded-lg flex-shrink-0 transition-all"
                     style={{
-                      background: 'linear-gradient(135deg, #22d3ee, #06b6d4)',
-                      boxShadow: '0 4px 12px rgba(34,211,238,0.3)',
+                      background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+                      boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
                     }}
                   >
-                    <Send size={14} color="white" />
+                    <Send size={12} color="white" />
                   </motion.button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}

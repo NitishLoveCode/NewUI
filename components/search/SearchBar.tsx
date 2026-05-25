@@ -13,7 +13,7 @@ export default function SearchBar() {
 
   return (
     <div
-      className="flex items-center rounded-xl overflow-hidden"
+      className="flex w-full items-center rounded-xl overflow-hidden"
       style={{
         backgroundColor: '#213743',
         border: `1px solid ${focused ? 'rgba(20,117,225,0.5)' : 'rgba(255,255,255,0.08)'}`,
