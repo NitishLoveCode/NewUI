@@ -18,6 +18,7 @@ interface NavbarProps {
 
 export default function Navbar({
   onToggleSidebar,
+  isSidebarExpanded = true,
   showSidebarToggle = true,
   sidebarWidth = 260,
   onOpenAuth,
@@ -62,26 +63,30 @@ export default function Navbar({
           </button>
         )}
 
-        <button
-          className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-colors"
-          style={{ backgroundColor: 'rgba(0,230,118,0.15)', color: '#00e676' }}
-        >
-          Casino
-        </button>
-        <button
-          className="px-4 py-1.5 rounded-md text-sm font-semibold transition-colors"
-          style={{ color: '#b1bad3' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#2f4553';
-            e.currentTarget.style.color = '#fff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#b1bad3';
-          }}
-        >
-          Sports
-        </button>
+        {isSidebarExpanded && (
+          <>
+            <button
+              className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: 'rgba(0,230,118,0.15)', color: '#00e676' }}
+            >
+              Casino
+            </button>
+            <button
+              className="px-4 py-1.5 rounded-md text-sm font-semibold transition-colors"
+              style={{ color: '#b1bad3' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#2f4553';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#b1bad3';
+              }}
+            >
+              Sports
+            </button>
+          </>
+        )}
       </motion.div>
 
       {/* Right section: fills remaining content area (desktop only) */}

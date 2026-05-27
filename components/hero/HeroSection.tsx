@@ -5,6 +5,7 @@ import { motion, animate, useInView } from 'framer-motion';
 import PromoCard from './PromoCard';
 import SocialLoginButtons from './SocialLoginButtons';
 import { Users, Code2, BookOpen } from 'lucide-react';
+import { useUser } from '@/hooks/useUser';
 
 interface HeroSectionProps {
   onOpenAuth?: (tab: 'login' | 'register') => void;
@@ -49,6 +50,7 @@ const stats = [
 ];
 
 export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
+  const { user } = useUser();
   return (
     <section className="w-full relative">
       {/* Desktop layout */}
@@ -117,6 +119,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           </motion.button>
 
           {/* Social login */}
+          {!user && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -127,6 +130,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             </p>
             <SocialLoginButtons />
           </motion.div>
+          )}
 
           {/* Stats row */}
           <motion.div
@@ -280,12 +284,14 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           ))}
         </div>
 
+        {!user && (
         <div className="flex flex-col items-center gap-3 w-full">
           <p className="text-sm" style={{ color: '#b1bad3' }}>
             Or Sign Up With
           </p>
           <SocialLoginButtons />
         </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 w-full">
           <PromoCard
