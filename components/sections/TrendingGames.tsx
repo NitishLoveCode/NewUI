@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 import SectionHeader from './SectionHeader';
 import GameCardComponent from '@/components/cards/GameCard';
 import GameDetailOverlay from '@/components/overlays/GameDetailOverlay';
+import PremiumReveal from '@/components/overlays/PremiumReveal';
 import { trendingGames } from '@/data/games';
 import type { GameCard } from '@/types';
 
@@ -15,6 +16,18 @@ const MOBILE_INITIAL = 6;
 export default function TrendingGames() {
   const [showAll, setShowAll] = useState(false);
   const [selectedGame, setSelectedGame] = useState<GameCard | null>(null);
+  const [revealGame, setRevealGame] = useState<GameCard | null>(null);
+  const pendingRef = useRef<GameCard | null>(null);
+
+  const handleCardClick = (game: GameCard) => {
+    pendingRef.current = game;
+    setRevealGame(game);
+  };
+
+  const handleRevealComplete = useCallback(() => {
+    setSelectedGame(pendingRef.current);
+    setRevealGame(null);
+  }, []);
 
   const mobileGames = showAll ? trendingGames : trendingGames.slice(0, MOBILE_INITIAL);
 
@@ -34,7 +47,7 @@ export default function TrendingGames() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.3 }}
           >
-            <GameCardComponent game={game} onClick={() => setSelectedGame(game)} />
+            <GameCardComponent game={game} onClick={() => handleCardClick(game)} />
           </motion.div>
         ))}
       </div>
@@ -53,7 +66,7 @@ export default function TrendingGames() {
               <div
                 className="cursor-pointer"
                 style={{ width: '100%' }}
-                onClick={() => setSelectedGame(game)}
+                onClick={() => handleCardClick(game)}
               >
                 <div
                   className="relative rounded-xl overflow-hidden"
@@ -105,6 +118,17 @@ export default function TrendingGames() {
           </div>
         )}
       </div>
+
+      {/* Premium reveal animation — plays before detail overlay opens */}
+      <AnimatePresence>
+        {revealGame && (
+          <PremiumReveal
+            key="premium-reveal"
+            game={revealGame}
+            onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Game detail overlay */}
       <AnimatePresence>

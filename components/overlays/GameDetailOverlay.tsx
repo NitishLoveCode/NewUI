@@ -7,6 +7,8 @@ import { X } from 'lucide-react';
 import Image from 'next/image';
 import type { GameCard } from '@/types';
 
+// ─── existing overlay constants ───────────────────────────────────────────────
+
 const STEP_LABELS = [
   'START', 'SPIN', '2×', 'WILD',
   '3×', 'BONUS', 'JACKPOT', 'RE-SPIN',
@@ -31,6 +33,68 @@ const STARBURST = `polygon(
   6.7% 75%, 13.29% 59.84%, 0% 50%, 13.29% 40.16%,
   6.7% 25%, 23.13% 23.13%, 25% 6.7%, 40.16% 13.29%
 )`;
+
+// ─── premium ambient animation constants ──────────────────────────────────────
+
+const PETAL_COLORS = [
+  '#FFB7C5', '#FFD700', '#FF9FB2', '#FFFACD',
+  '#FFC0CB', '#FFE4B5', '#F7CACA', '#FFDAB9',
+];
+
+// Continuously falling flower petals – fully deterministic (no Math.random)
+const FALLING_PETALS = Array.from({ length: 22 }, (_, i) => ({
+  id: i,
+  xPercent: 2 + (i / 22) * 96,
+  size: 9 + (i % 5) * 4,
+  heightRatio: 1.3 + (i % 4) * 0.2,   // petal elongation
+  startDelay: (i * 0.42) % 4.5,
+  duration: 5 + (i % 6) * 0.9,
+  rotateStart: i * 17,
+  rotateDelta: 210 + (i % 5) * 70,
+  color: PETAL_COLORS[i % PETAL_COLORS.length],
+  opacity: 0.55 + (i % 4) * 0.12,
+  swayX: -18 + (i % 7) * 6,            // gentle horizontal sway
+}));
+
+// One-shot burst petals that explode outward when overlay first opens
+const BURST_PETALS = Array.from({ length: 14 }, (_, i) => {
+  const angle = (i / 14) * Math.PI * 2;
+  const dist = 130 + (i % 4) * 48;
+  return {
+    id: i,
+    x: Math.cos(angle) * dist,
+    y: Math.sin(angle) * dist,
+    size: 10 + (i % 3) * 7,
+    color: PETAL_COLORS[i % PETAL_COLORS.length],
+    delay: 0.08 + i * 0.04,
+    rotation: i * 26,
+  };
+});
+
+// Orbiting sparkle dots around the card
+const SPARKLES = Array.from({ length: 16 }, (_, i) => {
+  const angle = (i / 16) * Math.PI * 2;
+  const r = 260 + (i % 3) * 45;
+  return {
+    id: i,
+    x: Math.cos(angle) * r,
+    y: Math.sin(angle) * r,
+    size: 3 + (i % 3),
+    delay: i * 0.22,
+    dur: 1.6 + (i % 5) * 0.45,
+    color: i % 2 === 0 ? '#FFD700' : '#FFF9C4',
+  };
+});
+
+// Four corner bracket positions: [top, right, rotate]
+const CORNERS = [
+  { top: -10, left: -10, rotate: 0 },
+  { top: -10, right: -10, rotate: 90 },
+  { bottom: -10, right: -10, rotate: 180 },
+  { bottom: -10, left: -10, rotate: 270 },
+] as const;
+
+// ─── sub-components ───────────────────────────────────────────────────────────
 
 function CompletedBadge({ step }: { step: number }) {
   return (
@@ -57,6 +121,38 @@ function CompletedBadge({ step }: { step: number }) {
   );
 }
 
+/** Golden L-bracket ornament for each corner */
+function CornerOrnament({ corner, accent }: { corner: typeof CORNERS[number]; accent: string }) {
+  return (
+    <motion.div
+      className="absolute pointer-events-none"
+      style={{ ...corner, width: 28, height: 28 }}
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.5, type: 'spring', stiffness: 380, damping: 18 }}
+    >
+      <motion.div
+        style={{ width: '100%', height: '100%', rotate: corner.rotate }}
+        animate={{ opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        {/* horizontal arm */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: 18, height: 2, background: `linear-gradient(90deg, #FFD700, ${accent})`, borderRadius: 2, boxShadow: '0 0 6px rgba(255,215,0,0.8)' }} />
+        {/* vertical arm */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: 2, height: 18, background: `linear-gradient(180deg, #FFD700, ${accent})`, borderRadius: 2, boxShadow: '0 0 6px rgba(255,215,0,0.8)' }} />
+        {/* corner diamond jewel */}
+        <motion.div
+          style={{ position: 'absolute', top: -3, left: -3, width: 7, height: 7, background: '#FFD700', borderRadius: 1, boxShadow: '0 0 10px rgba(255,215,0,1), 0 0 20px rgba(255,215,0,0.5)' }}
+          animate={{ rotate: [0, 180, 360] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── main component ───────────────────────────────────────────────────────────
+
 export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
   const router = useRouter();
   const accent = game.accentColor;
@@ -78,6 +174,8 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
 
   return (
     <AnimatePresence>
+
+      {/* ── 1. Backdrop ──────────────────────────────────────────────────────── */}
       <motion.div
         key="gdo-backdrop"
         className="fixed inset-0 z-[60]"
@@ -87,288 +185,380 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
         onClick={onClose}
       />
 
+      {/* ── 2. Ambient petal & sparkle layer ─────────────────────────────────── */}
+      <div className="fixed inset-0 z-[61] pointer-events-none overflow-hidden">
+
+        {/* Continuously falling petals */}
+        {FALLING_PETALS.map(p => (
+          <motion.div
+            key={`fp-${p.id}`}
+            className="absolute"
+            style={{
+              left: `${p.xPercent}%`,
+              width: p.size,
+              height: p.size * p.heightRatio,
+              background: p.color,
+              borderRadius: '70% 30% 70% 30% / 60% 40% 60% 40%',
+              boxShadow: `0 0 ${p.size / 2}px ${p.color}88`,
+            }}
+            initial={{ y: '-12vh', rotate: p.rotateStart, opacity: 0 }}
+            animate={{
+              y: '112vh',
+              x: [0, p.swayX, 0, -p.swayX, 0],
+              rotate: p.rotateStart + p.rotateDelta,
+              opacity: [0, p.opacity, p.opacity, 0],
+            }}
+            transition={{
+              y: { duration: p.duration, delay: p.startDelay, repeat: Infinity, ease: 'linear' },
+              x: { duration: p.duration, delay: p.startDelay, repeat: Infinity, ease: 'easeInOut' },
+              rotate: { duration: p.duration, delay: p.startDelay, repeat: Infinity, ease: 'linear' },
+              opacity: { duration: p.duration, delay: p.startDelay, repeat: Infinity, times: [0, 0.06, 0.88, 1] },
+            }}
+          />
+        ))}
+
+        {/* Entry burst petals – fire once on mount */}
+        {BURST_PETALS.map(p => (
+          <motion.div
+            key={`bp-${p.id}`}
+            className="absolute"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: p.size,
+              height: p.size * 1.45,
+              background: p.color,
+              borderRadius: '70% 30% 70% 30% / 60% 40% 60% 40%',
+              boxShadow: `0 0 ${p.size / 2}px ${p.color}88`,
+              marginLeft: -p.size / 2,
+              marginTop: -p.size * 0.725,
+            }}
+            initial={{ x: 0, y: 0, scale: 0, rotate: p.rotation, opacity: 0 }}
+            animate={{
+              x: p.x,
+              y: p.y,
+              scale: [0, 1.3, 0.9, 0],
+              rotate: p.rotation + 360,
+              opacity: [0, 1, 0.7, 0],
+            }}
+            transition={{ delay: p.delay, duration: 1.2, ease: [0.15, 0, 0.25, 1] }}
+          />
+        ))}
+
+        {/* Orbiting sparkle dots – twinkle continuously */}
+        {SPARKLES.map(s => (
+          <motion.div
+            key={`sp-${s.id}`}
+            className="absolute rounded-full"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: s.size,
+              height: s.size,
+              marginLeft: -s.size / 2,
+              marginTop: -s.size / 2,
+              background: s.color,
+              boxShadow: `0 0 ${s.size * 3}px ${s.size}px ${s.color}`,
+              x: s.x,
+              y: s.y,
+            }}
+            animate={{ opacity: [0, 1, 0], scale: [0.4, 1.4, 0.4] }}
+            transition={{ delay: s.delay, duration: s.dur, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+
+      {/* ── 3. Panel + card with corner ornaments & pulsing glow ─────────────── */}
       <motion.div
         key="gdo-panel"
-        className="fixed z-[61] inset-0 flex items-center justify-center pointer-events-none px-4"
+        className="fixed z-[62] inset-0 flex items-center justify-center pointer-events-none px-4"
       >
-        <motion.div
-          className="pointer-events-auto w-full max-w-[760px] rounded-3xl overflow-hidden"
-          style={{
-            background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
-            boxShadow: `0 0 70px ${accent}22, 0 28px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
-            border: `1px solid rgba(255,255,255,0.07)`,
-          }}
-          initial={{ scale: 0.88, opacity: 0, y: 24 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.88, opacity: 0, y: 24 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 300, delay: 0.06 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="flex">
-            {/* Left: Image panel */}
-            <div className="relative w-[240px] flex-shrink-0 self-stretch">
-              {game.image ? (
-                <Image
-                  src={game.image}
-                  alt={game.title.replace(/\n/g, ' ')}
-                  fill
-                  className="object-cover"
+        {/* Wrapper gives corner ornaments a relative anchor */}
+        <div className="relative pointer-events-none" style={{ width: '100%', maxWidth: 760 }}>
+
+          {/* Corner bracket ornaments */}
+          {CORNERS.map((corner, i) => (
+            <CornerOrnament key={i} corner={corner} accent={accent} />
+          ))}
+
+          {/* Card panel with pulsing royal glow */}
+          <motion.div
+            className="pointer-events-auto w-full rounded-3xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
+              border: `1px solid ${accent}44`,
+            }}
+            initial={{ scale: 0.88, opacity: 0, y: 24 }}
+            animate={{
+              scale: 1,
+              opacity: 1,
+              y: 0,
+              boxShadow: [
+                `0 0 40px ${accent}33, 0 0 80px ${accent}11, 0 28px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                `0 0 70px ${accent}66, 0 0 120px ${accent}22, 0 28px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                `0 0 40px ${accent}33, 0 0 80px ${accent}11, 0 28px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+              ],
+            }}
+            exit={{ scale: 0.88, opacity: 0, y: 24 }}
+            transition={{
+              scale: { type: 'spring', damping: 28, stiffness: 300, delay: 0.06 },
+              opacity: { duration: 0.3, delay: 0.06 },
+              y: { type: 'spring', damping: 28, stiffness: 300, delay: 0.06 },
+              boxShadow: { duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex">
+
+              {/* ── Left: image panel ──────────────────────────────────────── */}
+              <div className="relative w-[240px] flex-shrink-0 self-stretch">
+                {game.image ? (
+                  <Image
+                    src={game.image}
+                    alt={game.title.replace(/\n/g, ' ')}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0" style={{ background: game.gradient }} />
+                )}
+
+                <div
+                  className="absolute inset-0"
+                  style={{ background: 'linear-gradient(to top, rgba(8,20,32,0.97) 0%, rgba(8,20,32,0.4) 45%, transparent 100%)' }}
                 />
-              ) : (
-                <div className="absolute inset-0" style={{ background: game.gradient }} />
-              )}
 
-              {/* Bottom gradient overlay */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: 'linear-gradient(to top, rgba(8,20,32,0.97) 0%, rgba(8,20,32,0.4) 45%, transparent 100%)',
-                }}
-              />
-
-              {/* Accent glow edge */}
-              <motion.div
-                className="absolute inset-y-0 right-0 w-px"
-                style={{ background: `linear-gradient(180deg, transparent, ${accent}66, transparent)` }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              />
-
-              {/* Game info at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 p-5">
-                <motion.h3
-                  className="text-sm font-black text-white uppercase tracking-wide leading-tight"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  {game.title.replace(/\n/g, ' ')}
-                </motion.h3>
-                <motion.p
-                  className="text-[10px] mt-1 font-semibold uppercase tracking-widest"
-                  style={{ color: `${accent}cc` }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.26 }}
-                >
-                  {game.provider}
-                </motion.p>
+                {/* Accent glow edge with animated pulse */}
                 <motion.div
-                  className="flex items-center gap-1.5 mt-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.32 }}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#00e701' }} />
-                  <span className="text-[11px] text-white/60">
-                    <span className="font-bold text-white">{game.playing.toLocaleString()}</span> solving
-                  </span>
-                </motion.div>
-              </div>
-            </div>
+                  className="absolute inset-y-0 right-0 w-[2px]"
+                  style={{ background: `linear-gradient(180deg, transparent, ${accent}, transparent)` }}
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+                />
 
-            {/* Right: Timeline */}
-            <div className="flex-1 p-6 flex flex-col">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-7">
-                <div>
-                  <motion.h2
-                    className="text-base font-black text-white uppercase tracking-wide leading-tight"
-                    initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.18 }}
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <motion.h3
+                    className="text-sm font-black text-white uppercase tracking-wide leading-tight"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
                   >
-                    Coding Journey
-                  </motion.h2>
+                    {game.title.replace(/\n/g, ' ')}
+                  </motion.h3>
                   <motion.p
-                    className="text-[10px] mt-1 font-bold uppercase tracking-[0.2em]"
-                    style={{ color: accent }}
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    transition={{ delay: 0.24 }}
+                    className="text-[10px] mt-1 font-semibold uppercase tracking-widest"
+                    style={{ color: `${accent}cc` }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.26 }}
                   >
-                    12 Steps · Click to Start
+                    {game.provider}
                   </motion.p>
+                  <motion.div
+                    className="flex items-center gap-1.5 mt-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.32 }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#00e701' }} />
+                    <span className="text-[11px] text-white/60">
+                      <span className="font-bold text-white">{game.playing.toLocaleString()}</span> solving
+                    </span>
+                  </motion.div>
                 </div>
-                <motion.button
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-3"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.16, type: 'spring', stiffness: 340 }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={onClose}
-                >
-                  <X size={13} color="white" />
-                </motion.button>
               </div>
 
-              {/* Zig-zag snake path */}
-              <div className="flex-1">
-                {ROWS.map((row, rowIndex) => {
-                  const isReverse = rowIndex % 2 === 1;
+              {/* ── Right: timeline ────────────────────────────────────────── */}
+              <div className="flex-1 p-6 flex flex-col">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-7">
+                  <div>
+                    <motion.h2
+                      className="text-base font-black text-white uppercase tracking-wide leading-tight"
+                      initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.18 }}
+                    >
+                      Coding Journey
+                    </motion.h2>
+                    <motion.p
+                      className="text-[10px] mt-1 font-bold uppercase tracking-[0.2em]"
+                      style={{ color: accent }}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      transition={{ delay: 0.24 }}
+                    >
+                      12 Steps · Click to Start
+                    </motion.p>
+                  </div>
+                  <motion.button
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-3"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.16, type: 'spring', stiffness: 340 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={onClose}
+                  >
+                    <X size={13} color="white" />
+                  </motion.button>
+                </div>
 
-                  return (
-                    <Fragment key={rowIndex}>
-                      {/* Row of nodes + bars */}
-                      <div className="flex items-start">
-                        {row.map((step, colIndex) => {
-                          const isLastInRow = colIndex === row.length - 1;
-                          const adjacentStep = isReverse ? step - 1 : step + 1;
-                          const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
-                          const isDone = completedSteps.has(step);
+                {/* Zig-zag snake path */}
+                <div className="flex-1">
+                  {ROWS.map((row, rowIndex) => {
+                    const isReverse = rowIndex % 2 === 1;
 
-                          return (
-                            <Fragment key={step}>
-                              {/* Node + label */}
-                              <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
-                                <div
-                                  className="cursor-pointer"
-                                  onClick={() => handleStepClick(step)}
-                                >
-                                  <AnimatePresence mode="wait">
-                                    {isDone ? (
-                                      <CompletedBadge key="done" step={step} />
-                                    ) : (
-                                      <motion.div
-                                        key="normal"
-                                        className="relative w-11 h-11 rounded-full flex items-center justify-center"
-                                        style={{
-                                          background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
-                                          border: `2.5px solid ${accent}`,
-                                          boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
-                                        }}
-                                        initial={{ scale: 0, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
-                                        transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
-                                        whileHover={{ scale: 1.15 }}
-                                        whileTap={{ scale: 0.9 }}
-                                      >
-                                        <span className="text-sm font-black select-none" style={{ color: accent }}>
-                                          {step}
-                                        </span>
-                                        {/* Pop ring burst */}
+                    return (
+                      <Fragment key={rowIndex}>
+                        <div className="flex items-start">
+                          {row.map((step, colIndex) => {
+                            const isLastInRow = colIndex === row.length - 1;
+                            const adjacentStep = isReverse ? step - 1 : step + 1;
+                            const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
+                            const isDone = completedSteps.has(step);
+
+                            return (
+                              <Fragment key={step}>
+                                <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
+                                  <div className="cursor-pointer" onClick={() => handleStepClick(step)}>
+                                    <AnimatePresence mode="wait">
+                                      {isDone ? (
+                                        <CompletedBadge key="done" step={step} />
+                                      ) : (
                                         <motion.div
-                                          className="absolute rounded-full pointer-events-none"
-                                          style={{ inset: -4, border: `2px solid ${accent}` }}
-                                          initial={{ scale: 1, opacity: 0.7 }}
-                                          animate={{ scale: 1.8, opacity: 0 }}
-                                          transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
-                                        />
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
+                                          key="normal"
+                                          className="relative w-11 h-11 rounded-full flex items-center justify-center"
+                                          style={{
+                                            background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
+                                            border: `2.5px solid ${accent}`,
+                                            boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                                          }}
+                                          initial={{ scale: 0, opacity: 0 }}
+                                          animate={{ scale: 1, opacity: 1 }}
+                                          exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
+                                          transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                          whileHover={{ scale: 1.15 }}
+                                          whileTap={{ scale: 0.9 }}
+                                        >
+                                          <span className="text-sm font-black select-none" style={{ color: accent }}>
+                                            {step}
+                                          </span>
+                                          <motion.div
+                                            className="absolute rounded-full pointer-events-none"
+                                            style={{ inset: -4, border: `2px solid ${accent}` }}
+                                            initial={{ scale: 1, opacity: 0.7 }}
+                                            animate={{ scale: 1.8, opacity: 0 }}
+                                            transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
+                                          />
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+
+                                  <motion.span
+                                    className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
+                                    style={{
+                                      color: isDone ? '#4ade80' : `${accent}70`,
+                                      width: 44,
+                                      display: 'block',
+                                      letterSpacing: '0.06em',
+                                    }}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: nodeDelay(step) + 0.22 }}
+                                  >
+                                    {STEP_LABELS[step - 1]}
+                                  </motion.span>
                                 </div>
 
-                                <motion.span
-                                  className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
+                                {!isLastInRow && (() => {
+                                  const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
+                                  return (
+                                    <div className="flex-1 relative" style={{ paddingTop: 16 }}>
+                                      <div
+                                        className="h-[11px] w-full rounded-sm"
+                                        style={{ background: barIsComplete ? '#4ade8020' : `${accent}12` }}
+                                      />
+                                      <motion.div
+                                        className="absolute left-0 right-0 h-[11px] rounded-sm"
+                                        style={{
+                                          top: 16,
+                                          background: barIsComplete
+                                            ? `linear-gradient(90deg, #4ade80, #4ade8099)`
+                                            : `linear-gradient(90deg, ${accent}, ${accent}bb)`,
+                                          boxShadow: barIsComplete
+                                            ? `0 0 12px #4ade8066, 0 2px 6px rgba(0,0,0,0.45)`
+                                            : `0 0 12px ${accent}66, 0 2px 6px rgba(0,0,0,0.45)`,
+                                          transformOrigin: isReverse ? 'right center' : 'left center',
+                                        }}
+                                        initial={{ scaleX: 0 }}
+                                        animate={{ scaleX: 1 }}
+                                        transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
+                                      />
+                                    </div>
+                                  );
+                                })()}
+                              </Fragment>
+                            );
+                          })}
+                        </div>
+
+                        {rowIndex < ROWS.length - 1 && (() => {
+                          const isRight = rowIndex % 2 === 0;
+                          const connDelay = nodeDelay(isRight ? 5 : 9) + 0.08;
+                          const currentRow = ROWS[rowIndex];
+                          const nextRow = ROWS[rowIndex + 1];
+                          const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
+                          const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
+                          const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
+
+                          return (
+                            <div className={`flex ${isRight ? 'justify-end' : 'justify-start'}`} style={{ height: 26 }}>
+                              <div className="relative" style={{ width: 44 }}>
+                                <div
+                                  className="absolute rounded-sm"
+                                  style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${accent}12` }}
+                                />
+                                <motion.div
+                                  className="absolute rounded-sm origin-top"
                                   style={{
-                                    color: isDone ? '#4ade80' : `${accent}70`,
-                                    width: 44,
-                                    display: 'block',
-                                    letterSpacing: '0.06em',
+                                    left: '50%', transform: 'translateX(-50%)',
+                                    width: 11, top: 0, bottom: 0,
+                                    background: verticalIsComplete
+                                      ? `linear-gradient(180deg, #4ade80, #4ade8099)`
+                                      : `linear-gradient(180deg, ${accent}, ${accent}bb)`,
+                                    boxShadow: verticalIsComplete ? `0 0 12px #4ade8066` : `0 0 12px ${accent}66`,
                                   }}
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ delay: nodeDelay(step) + 0.22 }}
-                                >
-                                  {STEP_LABELS[step - 1]}
-                                </motion.span>
+                                  initial={{ scaleY: 0 }}
+                                  animate={{ scaleY: 1 }}
+                                  transition={{ delay: connDelay, duration: 0.18, ease: 'easeOut' }}
+                                />
                               </div>
-
-                              {/* Connecting bar */}
-                              {!isLastInRow && (() => {
-                                const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
-                                return (
-                                  <div className="flex-1 relative" style={{ paddingTop: 16 }}>
-                                    <div
-                                      className="h-[11px] w-full rounded-sm"
-                                      style={{ background: barIsComplete ? '#4ade8020' : `${accent}12` }}
-                                    />
-                                    <motion.div
-                                      className="absolute left-0 right-0 h-[11px] rounded-sm"
-                                      style={{
-                                        top: 16,
-                                        background: barIsComplete
-                                          ? `linear-gradient(90deg, #4ade80, #4ade8099)`
-                                          : `linear-gradient(90deg, ${accent}, ${accent}bb)`,
-                                        boxShadow: barIsComplete
-                                          ? `0 0 12px #4ade8066, 0 2px 6px rgba(0,0,0,0.45)`
-                                          : `0 0 12px ${accent}66, 0 2px 6px rgba(0,0,0,0.45)`,
-                                        transformOrigin: isReverse ? 'right center' : 'left center',
-                                      }}
-                                      initial={{ scaleX: 0 }}
-                                      animate={{ scaleX: 1 }}
-                                      transition={{ delay: bDelay, duration: 0.2, ease: 'easeOut' }}
-                                    />
-                                  </div>
-                                );
-                              })()}
-                            </Fragment>
-                          );
-                        })}
-                      </div>
-
-                      {/* Vertical connector between rows */}
-                      {rowIndex < ROWS.length - 1 && (() => {
-                        const isRight = rowIndex % 2 === 0;
-                        const connDelay = nodeDelay(isRight ? 5 : 9) + 0.08;
-                        const currentRow = ROWS[rowIndex];
-                        const nextRow = ROWS[rowIndex + 1];
-                        const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
-                        const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
-                        const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
-
-                        return (
-                          <div
-                            className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
-                            style={{ height: 26 }}
-                          >
-                            <div className="relative" style={{ width: 44 }}>
-                              <div
-                                className="absolute rounded-sm"
-                                style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${accent}12` }}
-                              />
-                              <motion.div
-                                className="absolute rounded-sm origin-top"
-                                style={{
-                                  left: '50%', transform: 'translateX(-50%)',
-                                  width: 11, top: 0, bottom: 0,
-                                  background: verticalIsComplete
-                                    ? `linear-gradient(180deg, #4ade80, #4ade8099)`
-                                    : `linear-gradient(180deg, ${accent}, ${accent}bb)`,
-                                  boxShadow: verticalIsComplete
-                                    ? `0 0 12px #4ade8066`
-                                    : `0 0 12px ${accent}66`,
-                                }}
-                                initial={{ scaleY: 0 }}
-                                animate={{ scaleY: 1 }}
-                                transition={{ delay: connDelay, duration: 0.18, ease: 'easeOut' }}
-                              />
                             </div>
-                          </div>
-                        );
-                      })()}
-                    </Fragment>
-                  );
-                })}
+                          );
+                        })()}
+                      </Fragment>
+                    );
+                  })}
+                </div>
+
+                {/* Footer */}
+                <motion.p
+                  className="text-center text-[10px] mt-6 font-medium tracking-widest uppercase"
+                  style={{ color: 'rgba(255,255,255,0.18)' }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: nodeDelay(12) + 0.45 }}
+                >
+                  Click a step to start coding · Tap anywhere to close
+                </motion.p>
               </div>
 
-              {/* Footer */}
-              <motion.p
-                className="text-center text-[10px] mt-6 font-medium tracking-widest uppercase"
-                style={{ color: 'rgba(255,255,255,0.18)' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: nodeDelay(12) + 0.45 }}
-              >
-                Click a step to start coding · Tap anywhere to close
-              </motion.p>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </motion.div>
+
     </AnimatePresence>
   );
 }
