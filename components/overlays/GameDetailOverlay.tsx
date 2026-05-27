@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -158,6 +158,38 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
   const accent = game.accentColor;
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
+  // Intro showcase: light up 1→12 green then reset
+  const [introActive, setIntroActive] = useState<Set<number>>(new Set());
+  const [introDone, setIntroDone] = useState(false);
+
+  useEffect(() => {
+    const START   = 1650; // after node entry animations settle
+    const FORWARD = 170;  // ms between each step turning green
+    const HOLD    = 520;  // ms to hold all-green before resetting
+    const RESET   = 85;   // ms between each step resetting
+
+    const ts: ReturnType<typeof setTimeout>[] = [];
+
+    for (let s = 1; s <= 12; s++) {
+      ts.push(setTimeout(() =>
+        setIntroActive(prev => new Set([...prev, s])),
+        START + s * FORWARD
+      ));
+    }
+
+    const resetStart = START + 12 * FORWARD + HOLD;
+    for (let s = 1; s <= 12; s++) {
+      ts.push(setTimeout(() =>
+        setIntroActive(prev => { const n = new Set(prev); n.delete(s); return n; }),
+        resetStart + s * RESET
+      ));
+    }
+
+    ts.push(setTimeout(() => setIntroDone(true), resetStart + 12 * RESET + 250));
+
+    return () => ts.forEach(clearTimeout);
+  }, []);
+
   const handleStepClick = (step: number) => {
     onClose();
     router.push(`/coding-practice?step=${step}`);
@@ -171,6 +203,10 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
       return next;
     });
   };
+
+  // true when a step should appear green (user-completed OR intro showcase)
+  const isGreen = (s: number) =>
+    completedSteps.has(s) || (!introDone && introActive.has(s));
 
   return (
     <AnimatePresence>
@@ -415,7 +451,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                             const isLastInRow = colIndex === row.length - 1;
                             const adjacentStep = isReverse ? step - 1 : step + 1;
                             const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
-                            const isDone = completedSteps.has(step);
+                            const isDone = isGreen(step);
 
                             return (
                               <Fragment key={step}>
@@ -472,7 +508,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                 </div>
 
                                 {!isLastInRow && (() => {
-                                  const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
+                                  const barIsComplete = isGreen(step) && isGreen(adjacentStep);
                                   return (
                                     <div className="flex-1 relative" style={{ paddingTop: 16 }}>
                                       <div
@@ -510,7 +546,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                           const nextRow = ROWS[rowIndex + 1];
                           const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
                           const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
-                          const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
+                          const verticalIsComplete = isGreen(currentStep) && isGreen(nextStep);
 
                           return (
                             <div className={`flex ${isRight ? 'justify-end' : 'justify-start'}`} style={{ height: 26 }}>
