@@ -94,6 +94,21 @@ const CORNERS = [
   { bottom: -10, left: -10, rotate: 270 },
 ] as const;
 
+// Burst sparks that explode inside the success overlay
+const SUCCESS_SPARKS = Array.from({ length: 14 }, (_, i) => {
+  const angle = (i / 14) * Math.PI * 2;
+  const dist  = 70 + (i % 3) * 35;
+  return {
+    id: i,
+    x: Math.cos(angle) * dist,
+    y: Math.sin(angle) * dist,
+    size: 4 + (i % 4) * 2,
+    delay: 0.05 + i * 0.04,
+    color: i % 2 === 0 ? '#FFD700' : '#FFF9C4',
+    isDiamond: i % 3 === 0,
+  };
+});
+
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function CompletedBadge({ step }: { step: number }) {
@@ -153,6 +168,77 @@ function CornerOrnament({ corner, accent }: { corner: typeof CORNERS[number]; ac
 
 // ─── main component ───────────────────────────────────────────────────────────
 
+/** Animated "YOU ARE HERE" pointer that floats above the current step node */
+function CurrentStepPointer({ accent }: { accent: string }) {
+  return (
+    <motion.div
+      className="absolute pointer-events-none z-10"
+      style={{ bottom: 'calc(100% + 3px)', left: '50%', x: '-50%' }}
+      initial={{ opacity: 0, scale: 0, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0, y: 6, transition: { duration: 0.18 } }}
+      transition={{ type: 'spring', stiffness: 380, damping: 18 }}
+    >
+      {/* Everything inside floats up/down */}
+      <motion.div
+        className="flex flex-col items-center"
+        animate={{ y: [-3, 3] }}
+        transition={{ duration: 1.35, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }}
+      >
+        {/* Crown — gentle sway */}
+        <motion.div
+          style={{ fontSize: 15, lineHeight: 1, filter: 'drop-shadow(0 0 7px rgba(255,215,0,0.95))' }}
+          animate={{ rotate: [-7, 7] }}
+          transition={{ duration: 1.9, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }}
+        >
+          👑
+        </motion.div>
+
+        {/* "YOU" badge — pulsing glow */}
+        <motion.div
+          className="mt-[3px] px-[7px] py-[2px] rounded-full flex items-center gap-1"
+          style={{
+            background: `linear-gradient(90deg, ${accent}22, ${accent}40)`,
+            border: `1px solid ${accent}`,
+          }}
+          animate={{
+            boxShadow: [
+              `0 0 6px ${accent}55`,
+              `0 0 14px ${accent}cc, 0 0 24px ${accent}44`,
+              `0 0 6px ${accent}55`,
+            ],
+          }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <motion.div
+            className="w-1 h-1 rounded-full"
+            style={{ background: accent }}
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <span
+            className="text-[7px] font-black uppercase tracking-widest select-none"
+            style={{ color: accent }}
+          >
+            YOU
+          </span>
+        </motion.div>
+
+        {/* Chevron — bounces down */}
+        <motion.svg
+          width="10" height="7" viewBox="0 0 10 7" fill="none"
+          className="mt-[2px]"
+          animate={{ y: [0, 3, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.85, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <path d="M1 1L5 5.5L9 1" stroke={accent} strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" />
+        </motion.svg>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
   const router = useRouter();
   const accent = game.accentColor;
@@ -160,16 +246,22 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
 
   // Intro showcase: light up 1→12 green then reset
   const [introActive, setIntroActive] = useState<Set<number>>(new Set());
-  const [introDone, setIntroDone] = useState(false);
+  const [introDone, setIntroDone]     = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    const START   = 1650; // after node entry animations settle
-    const FORWARD = 170;  // ms between each step turning green
-    const HOLD    = 520;  // ms to hold all-green before resetting
-    const RESET   = 85;   // ms between each step resetting
+    const START   = 1600; // after node entry animations settle
+    const FORWARD = 150;  // ms between each step turning green
+    const HOLD    = 1600; // hold all-green (success message shown here)
+    const RESET   = 70;   // ms between each step resetting
+
+    const allGreenAt  = START + 12 * FORWARD;        // 3400ms
+    const resetStart  = allGreenAt + HOLD;           // 5000ms
+    const successHide = resetStart + 12 * RESET + 200; // 6040ms
 
     const ts: ReturnType<typeof setTimeout>[] = [];
 
+    // Light up steps 1→12
     for (let s = 1; s <= 12; s++) {
       ts.push(setTimeout(() =>
         setIntroActive(prev => new Set([...prev, s])),
@@ -177,7 +269,10 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
       ));
     }
 
-    const resetStart = START + 12 * FORWARD + HOLD;
+    // Show success banner after all are green
+    ts.push(setTimeout(() => setShowSuccess(true), allGreenAt + 180));
+
+    // Reset steps 1→12
     for (let s = 1; s <= 12; s++) {
       ts.push(setTimeout(() =>
         setIntroActive(prev => { const n = new Set(prev); n.delete(s); return n; }),
@@ -185,7 +280,9 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
       ));
     }
 
-    ts.push(setTimeout(() => setIntroDone(true), resetStart + 12 * RESET + 250));
+    // Hide success banner + mark intro done
+    ts.push(setTimeout(() => setShowSuccess(false), successHide));
+    ts.push(setTimeout(() => setIntroDone(true), successHide + 350));
 
     return () => ts.forEach(clearTimeout);
   }, []);
@@ -207,6 +304,11 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
   // true when a step should appear green (user-completed OR intro showcase)
   const isGreen = (s: number) =>
     completedSteps.has(s) || (!introDone && introActive.has(s));
+
+  // first incomplete step — this is where the pointer lives
+  const nextStep = introDone
+    ? (Array.from({ length: 12 }, (_, i) => i + 1).find(s => !completedSteps.has(s)) ?? null)
+    : null;
 
   return (
     <AnimatePresence>
@@ -344,7 +446,121 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex">
+            <div className="flex relative">
+
+              {/* ── SUCCESS overlay — shown when all steps are green ──────── */}
+              <AnimatePresence>
+                {showSuccess && (
+                  <motion.div
+                    className="absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden"
+                    style={{ background: 'rgba(4,10,20,0.88)', backdropFilter: 'blur(6px)' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.35 }}
+                  >
+                    {/* Burst sparks */}
+                    {SUCCESS_SPARKS.map(s => (
+                      <motion.div
+                        key={s.id}
+                        className="absolute"
+                        style={{
+                          width: s.size, height: s.size,
+                          background: s.color,
+                          borderRadius: s.isDiamond ? 2 : '50%',
+                          rotate: s.isDiamond ? 45 : 0,
+                          boxShadow: `0 0 ${s.size * 3}px ${s.color}`,
+                        }}
+                        initial={{ x: 0, y: 0, scale: 0, opacity: 0 }}
+                        animate={{ x: s.x, y: s.y, scale: [0, 1.5, 0], opacity: [0, 1, 0] }}
+                        transition={{ delay: s.delay, duration: 0.9, ease: [0.15, 0, 0.3, 1] }}
+                      />
+                    ))}
+
+                    {/* Expanding gold ring */}
+                    <motion.div
+                      className="absolute rounded-full pointer-events-none"
+                      style={{ width: 60, height: 60, border: '2px solid rgba(255,215,0,0.8)', boxShadow: '0 0 20px rgba(255,215,0,0.4)' }}
+                      initial={{ scale: 0, opacity: 0.9 }}
+                      animate={{ scale: 7, opacity: 0 }}
+                      transition={{ duration: 0.9, ease: 'easeOut' }}
+                    />
+
+                    {/* Trophy */}
+                    <motion.div
+                      style={{ fontSize: 58, lineHeight: 1, filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.9)) drop-shadow(0 0 40px rgba(255,215,0,0.4))' }}
+                      initial={{ scale: 0, y: -20, opacity: 0 }}
+                      animate={{ scale: 1, y: 0, opacity: 1 }}
+                      transition={{ delay: 0.15, type: 'spring', stiffness: 380, damping: 18 }}
+                    >
+                      🏆
+                    </motion.div>
+
+                    {/* ALL COMPLETE label */}
+                    <motion.p
+                      className="text-[10px] font-bold uppercase tracking-[0.5em] mt-3"
+                      style={{ color: 'rgba(255,215,0,0.65)' }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.28, duration: 0.35 }}
+                    >
+                      All Steps Complete
+                    </motion.p>
+
+                    {/* SUCCESS text */}
+                    <motion.div
+                      className="relative overflow-hidden mt-1"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.32, duration: 0.35 }}
+                    >
+                      <motion.div style={{ filter: 'drop-shadow(0 2px 16px rgba(255,215,0,0.7))' }}>
+                        <span
+                          className="block text-5xl font-black tracking-[0.3em] uppercase select-none"
+                          style={{
+                            background: 'linear-gradient(90deg, #7B5C00 0%, #FFD700 22%, #FFFDE7 50%, #FFD700 78%, #7B5C00 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text',
+                          }}
+                        >
+                          SUCCESS
+                        </span>
+                      </motion.div>
+                      {/* Shimmer sweep */}
+                      <motion.div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ background: 'linear-gradient(105deg, transparent 25%, rgba(255,255,255,0.7) 50%, transparent 75%)', width: '55%' }}
+                        initial={{ x: '-130%' }}
+                        animate={{ x: '300%' }}
+                        transition={{ delay: 0.55, duration: 0.6, ease: 'easeInOut' }}
+                      />
+                    </motion.div>
+
+                    {/* Divider + game title */}
+                    <motion.div
+                      className="flex items-center gap-2 mt-3"
+                      initial={{ opacity: 0, scaleX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      transition={{ delay: 0.48, duration: 0.4 }}
+                    >
+                      <div style={{ width: 36, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,215,0,0.6))' }} />
+                      <div style={{ width: 5, height: 5, background: '#FFD700', transform: 'rotate(45deg)', boxShadow: '0 0 6px rgba(255,215,0,0.9)' }} />
+                      <div style={{ width: 36, height: 1, background: 'linear-gradient(90deg, rgba(255,215,0,0.6), transparent)' }} />
+                    </motion.div>
+
+                    <motion.p
+                      className="text-sm font-black uppercase tracking-widest mt-2"
+                      style={{ color: accent }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.52, duration: 0.35 }}
+                    >
+                      {game.title.replace(/\n/g, ' ')}
+                    </motion.p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* ── Left: image panel ──────────────────────────────────────── */}
               <div className="relative w-[240px] flex-shrink-0 self-stretch">
@@ -452,10 +668,19 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                             const adjacentStep = isReverse ? step - 1 : step + 1;
                             const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
                             const isDone = isGreen(step);
+                            const isCurrentStep = step === nextStep;
 
                             return (
                               <Fragment key={step}>
-                                <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
+                                <div className="flex flex-col items-center relative" style={{ flexShrink: 0 }}>
+
+                                  {/* ── YOU ARE HERE pointer ── */}
+                                  <AnimatePresence>
+                                    {isCurrentStep && (
+                                      <CurrentStepPointer key="ptr" accent={accent} />
+                                    )}
+                                  </AnimatePresence>
+
                                   <div className="cursor-pointer" onClick={() => handleStepClick(step)}>
                                     <AnimatePresence mode="wait">
                                       {isDone ? (
@@ -467,7 +692,9 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                           style={{
                                             background: 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
                                             border: `2.5px solid ${accent}`,
-                                            boxShadow: `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                                            boxShadow: isCurrentStep
+                                              ? `0 0 26px ${accent}aa, 0 0 52px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.22)`
+                                              : `0 0 18px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
                                           }}
                                           initial={{ scale: 0, opacity: 0 }}
                                           animate={{ scale: 1, opacity: 1 }}
@@ -479,6 +706,8 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                           <span className="text-sm font-black select-none" style={{ color: accent }}>
                                             {step}
                                           </span>
+
+                                          {/* One-time pop ring on entry */}
                                           <motion.div
                                             className="absolute rounded-full pointer-events-none"
                                             style={{ inset: -4, border: `2px solid ${accent}` }}
@@ -486,6 +715,25 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                             animate={{ scale: 1.8, opacity: 0 }}
                                             transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
                                           />
+
+                                          {/* Sonar beacon rings — only on current step */}
+                                          {isCurrentStep && [0, 1, 2].map(ri => (
+                                            <motion.div
+                                              key={`sonar-${ri}`}
+                                              className="absolute rounded-full pointer-events-none"
+                                              style={{
+                                                inset: -(8 + ri * 9),
+                                                border: `${1.8 - ri * 0.4}px solid ${accent}`,
+                                              }}
+                                              animate={{ scale: [1, 1.55 + ri * 0.18], opacity: [0.65, 0] }}
+                                              transition={{
+                                                duration: 1.6,
+                                                repeat: Infinity,
+                                                delay: ri * 0.52,
+                                                ease: 'easeOut',
+                                              }}
+                                            />
+                                          ))}
                                         </motion.div>
                                       )}
                                     </AnimatePresence>
