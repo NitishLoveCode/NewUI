@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import MatchAnimation from "@/components/MatchAnimation";
+import { StoreProvider } from "@/stores/StoreProvider";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -38,8 +39,10 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable, dancingScript.variable)}
     >
       <body className="min-h-full flex flex-col">
-        <MatchAnimation />
-        {children}
+        <StoreProvider>
+          <MatchAnimation />
+          {children}
+        </StoreProvider>
       </body>
     </html>
   );

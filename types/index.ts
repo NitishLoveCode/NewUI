@@ -32,3 +32,9 @@ export interface MobileNavItem {
 }
 
 export type SidebarMode = 'expanded' | 'collapsed';
+
+
+export interface dsaTopic {
+  step_name: string;
+  id: number;
+}
