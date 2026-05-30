@@ -37,8 +37,8 @@ export default function Navbar({
     <header
       className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center"
       style={{
-        backgroundColor: 'rgba(13, 29, 43, 0.96)',
-        backdropFilter: 'blur(12px)',
+        // backgroundColor: '#1a2d38',
+        // backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(0,230,118,0.08)',
       }}
     >
@@ -48,7 +48,7 @@ export default function Navbar({
         animate={{ width: sidebarWidth }}
         transition={{ duration: 0.22, ease: 'easeInOut' }}
         className="hidden md:flex items-center gap-3 h-full shrink-0 px-4"
-        style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ borderRight: '1px solid rgba(255,255,255,0.06)', backgroundColor: '#13242e' }}
       >
         {showSidebarToggle && (
           <button
@@ -90,7 +90,7 @@ export default function Navbar({
       </motion.div>
 
       {/* Right section: fills remaining content area (desktop only) */}
-      <div className="hidden md:flex flex-1 items-center justify-between px-4 h-full">
+      <div className="hidden bg-[#1a2d38] md:flex flex-1 items-center justify-between px-4 h-full">
         {/* Brand */}
         <Link href="/" aria-label="Go to ilovedsa.com home">
           <motion.div className="flex items-center gap-2 cursor-pointer" whileHover={{ scale: 1.03 }}>

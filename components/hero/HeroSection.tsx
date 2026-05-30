@@ -168,16 +168,18 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           className="grid grid-cols-2 gap-4"
         >
           <PromoCard
+            imageUrl='/images/bannerImage1.png'
             title="DSA"
             players={67738}
             gradient="linear-gradient(135deg, #0a3d1a 0%, #1a6b3a 50%, #2dd06e 100%)"
             icon="🧠"
           />
           <PromoCard
-            title="Notes"
+          imageUrl='/images/girlBannerImage1.png'
+            title="DSA"
             players={12506}
             gradient="linear-gradient(135deg, #0a2e1a 0%, #0f5c38 50%, #00e676 100%)"
-            icon="📝"
+            icon="🧠"
           />
           {/* Extra wide jackpot promo */}
           <div
@@ -295,16 +297,18 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
 
         <div className="grid grid-cols-2 gap-3 w-full">
           <PromoCard
+            imageUrl="/image/bannerImage1.png"
             title="DSA"
             players={67738}
             gradient="linear-gradient(135deg, #0a3d1a 0%, #1a6b3a 50%, #2dd06e 100%)"
             icon="🧠"
           />
           <PromoCard
-            title="Notes"
+            imageUrl="/image/girlBannerImage1.png"
+            title="DSA"
             players={12506}
             gradient="linear-gradient(135deg, #0a2e1a 0%, #0f5c38 50%, #00e676 100%)"
-            icon="📝"
+            icon="🧠"
           />
         </div>
       </div>

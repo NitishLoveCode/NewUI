@@ -1,15 +1,18 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
+
 
 interface PromoCardProps {
   title: string;
   players: number;
   gradient: string;
   icon: string;
+  imageUrl: string;
 }
 
-export default function PromoCard({ title, players, gradient, icon }: PromoCardProps) {
+export default function PromoCard({ title, imageUrl, players, gradient, icon }: PromoCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.03 }}
@@ -20,9 +23,10 @@ export default function PromoCard({ title, players, gradient, icon }: PromoCardP
       {/* Background gradient art */}
       <div
         className="absolute inset-0 flex items-center justify-center"
-        style={{ background: gradient }}
+        style={{ backgroundImage: `url(${imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center 22%', backgroundBlendMode: 'overlay', backgroundColor: gradient }}
       >
-        <span className="text-7xl select-none opacity-70">{icon}</span>
+        {/* <Image src={imageUrl} alt="Banner" fill className="object-cover" /> */}
+        {/* <span className="text-7xl select-none opacity-70">{icon}</span> */}
       </div>
 
       {/* Bottom overlay */}
@@ -30,6 +34,7 @@ export default function PromoCard({ title, players, gradient, icon }: PromoCardP
         className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2"
         style={{
           background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
+          // background: 'rgba(#203642)',
         }}
       >
         <div className="flex items-center gap-1.5">

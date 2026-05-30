@@ -10,7 +10,7 @@ export const trendingGames: GameCard[] = [
     playing: 1240,
     gradient: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0ea5e9 100%)',
     accentColor: '#38bdf8',
-    image: '/images/star_printing_dsa_questions.png',
+    image: '/images/starPrinting.png',
   },
   {
     id: '4', // done
@@ -37,7 +37,7 @@ export const trendingGames: GameCard[] = [
     playing: 563,
     gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 40%, #fde68a 100%)',
     accentColor: '#fde68a',
-    image: '/images/Array_dsa.png',
+    image: '/images/selection_short.png',
   },
   {
     id: '7',
@@ -46,7 +46,7 @@ export const trendingGames: GameCard[] = [
     playing: 270,
     gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 40%, #4c1d95 100%)',
     accentColor: '#a78bfa',
-    image: '/images/Hashing_dsa.png',
+    image: '/images/bubbleShort1.png',
   },
   {
     id: '8',
@@ -55,7 +55,7 @@ export const trendingGames: GameCard[] = [
     playing: 569,
     gradient: 'linear-gradient(135deg, #be185d 0%, #ec4899 50%, #f9a8d4 100%)',
     accentColor: '#f9a8d4',
-    image: '/images/String_dsa.png',
+    image: '/images/insertion_hort.png',
   },
   {
     id: '9',
@@ -64,7 +64,7 @@ export const trendingGames: GameCard[] = [
     playing: 96,
     gradient: 'linear-gradient(135deg, #065f46 0%, #059669 40%, #34d399 100%)',
     accentColor: '#34d399',
-    image: '/images/string_algo.png',
+    image: '/images/mergeShort.png',
   },
   {
     id: '10',
@@ -73,7 +73,7 @@ export const trendingGames: GameCard[] = [
     playing: 84,
     gradient: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 50%, #a855f7 100%)',
     accentColor: '#c4b5fd',
-    image: '/images/binery_search.png',
+    image: '/images/quickShort.png',
   },
   {
     id: '12', // done

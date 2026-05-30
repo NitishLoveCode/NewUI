@@ -39,10 +39,18 @@ export default function Sidebar({ isExpanded }: SidebarProps) {
       initial={false}
       animate={{ width: isExpanded ? 260 : 68 }}
       transition={{ duration: 0.22, ease: 'easeInOut' }}
-      className="hidden md:flex flex-col fixed left-0 top-14 bottom-0 z-40 overflow-hidden"
-      style={{ backgroundColor: '#1a2c38' }}
+      className="hidden bg-[#0f1c23] pt-4 md:flex flex-col fixed left-0 top-14 bottom-0 z-40 overflow-hidden items-center justify-center"
+      // style={{ backgroundColor: '#12222b' }}
     >
-      <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden py-3">
+      <div 
+        className="flex flex-col h-full overflow-y-auto py-3 bg-[#1a2d38] rounded-lg mx-2"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style>{`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
         <SidebarGroup items={mainItems} isExpanded={isExpanded} />
         <div className="my-3 mx-3" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         <SidebarGroup items={infoItems} isExpanded={isExpanded} />
