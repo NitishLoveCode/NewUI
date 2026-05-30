@@ -23,7 +23,7 @@ export default function SiteLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' })
 
   const heartPulse = {
     animate: { scale: [1, 1.35, 1] },
-    transition: { duration: 0.8, repeat: Infinity, repeatDelay: 0.5, ease: 'easeInOut' },
+    transition: { duration: 0.8, repeat: Infinity, repeatDelay: 0.5, ease: [0.42, 0, 0.58, 1] as [number, number, number, number] }, // cubic-bezier for easeInOut
   };
 
   return (
@@ -69,7 +69,7 @@ export default function SiteLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' })
                 fill="#ff80ab"
                 initial={{ opacity: 0.8, y: 0, x: -6, scale: 0.5 }}
                 animate={{ opacity: 0, y: -32, x: -14, scale: 0.8 }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
+                transition={{ duration: 1.2, ease: [0.42, 0, 0.58, 1] as [number, number, number, number] }}
                 className="absolute"
                 style={{ pointerEvents: 'none' }}
               >
@@ -83,7 +83,7 @@ export default function SiteLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' })
                 fill="#ff80ab"
                 initial={{ opacity: 0.8, y: 0, x: 6, scale: 0.5 }}
                 animate={{ opacity: 0, y: -32, x: 14, scale: 0.8 }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
+                transition={{ duration: 1.2, ease: [0.42, 0, 0.58, 1] as [number, number, number, number] }}
                 className="absolute"
                 style={{ pointerEvents: 'none' }}
               >
