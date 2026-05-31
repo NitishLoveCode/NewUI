@@ -1,11 +1,8 @@
-
 'use client';
-export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Editor from '@monaco-editor/react';
 import {
   Code2, Play, Video, VideoOff, Mic, MicOff, MessageSquare,
   Send, Trophy, Zap, UserX, Wifi, Terminal, ScreenShare,
@@ -14,6 +11,11 @@ import {
   ChevronDown, BookOpen, Music2, Users, AlignLeft, SkipBack, SkipForward, Volume2,
 } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
+import dynamic from 'next/dynamic';
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+});
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
@@ -1962,10 +1964,16 @@ function CollaborationArena({
 // ─── Page Root ────────────────────────────────────────────────────────────────
 
 function CodingPracticeContent() {
-  const searchParams = useSearchParams();
-  const stepParam = searchParams.get('step');
-  const initialStep = stepParam ? parseInt(stepParam, 10) : 4;
+  
+const [stepParam, setStepParam] = useState<string | null>(null);
 
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  setStepParam(params.get('step'));
+}, []);
+
+
+const initialStep = stepParam ? parseInt(stepParam, 10) : 4;
   const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('idle');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [currentStep, setCurrentStep] = useState(initialStep);
