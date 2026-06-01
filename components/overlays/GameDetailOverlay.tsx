@@ -1,25 +1,21 @@
 'use client';
 
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Image from 'next/image';
 import type { GameCard } from '@/types';
+import { useAppDispatch } from '@/stores/hooks';
+import { setActiveProblemNumber, setGameSteps } from '@/stores/codingPractice/activeStepSlice';
+import { useGetDsaQuestionQuery } from '@/stores/api';
 
-// ─── existing overlay constants ───────────────────────────────────────────────
+// ─── types ────────────────────────────────────────────────────────────────────
 
-const STEP_LABELS = [
-  'START', 'SPIN', '2×', 'WILD',
-  '3×', 'BONUS', 'JACKPOT', 'RE-SPIN',
-  'HOLD', 'CASCADE', 'GAMBLE', 'MAX WIN',
-];
-
-const ROWS: number[][] = [
-  [1, 2, 3, 4],
-  [8, 7, 6, 5],
-  [9, 10, 11, 12],
-];
+export type QuestionStep = {
+  question_id: number;
+  question_step_number: number;
+};
 
 const NODE_START = 0.28;
 const NODE_GAP = 0.11;
@@ -239,30 +235,70 @@ function CurrentStepPointer({ accent }: { accent: string }) {
   );
 }
 
-export default function GameDetailOverlay({ game, onClose }: { game: GameCard; onClose: () => void }) {
+export default function GameDetailOverlay({
+  game,
+  onClose,
+  steps = [],
+}: {
+  game: GameCard;
+  onClose: () => void;
+  steps?: QuestionStep[];
+}) {
   const router = useRouter();
   const accent = game.accentColor;
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
-  // Intro showcase: light up 1→12 green then reset
+  // Responsive column count — 3 on mobile, 4 on desktop
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const update = () => setCols(window.innerWidth < 768 ? 3 : 4);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Sort steps by step number and chunk into snake-pattern rows
+  const sortedSteps = useMemo(
+    () => [...steps].sort((a, b) => a.question_step_number - b.question_step_number),
+    [steps]
+  );
+  const total = sortedSteps.length;
+  const ROWS = useMemo<QuestionStep[][]>(() => {
+    const result: QuestionStep[][] = [];
+    for (let i = 0; i < sortedSteps.length; i += cols) {
+      const chunk = sortedSteps.slice(i, i + cols);
+      const rowIndex = result.length;
+      result.push(rowIndex % 2 === 1 ? [...chunk].reverse() : chunk);
+    }
+    return result;
+  }, [sortedSteps, cols]);
+
+  // Intro showcase: light up 1→N green then reset
   const [introActive, setIntroActive] = useState<Set<number>>(new Set());
   const [introDone, setIntroDone]     = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+
+  const { data, error } = useGetDsaQuestionQuery(selectedGameId!, {
+      skip: !selectedGameId,
+    });
 
   useEffect(() => {
+    if (total === 0) return;
     const START   = 1600; // after node entry animations settle
     const FORWARD = 150;  // ms between each step turning green
     const HOLD    = 1600; // hold all-green (success message shown here)
     const RESET   = 70;   // ms between each step resetting
 
-    const allGreenAt  = START + 12 * FORWARD;        // 3400ms
-    const resetStart  = allGreenAt + HOLD;           // 5000ms
-    const successHide = resetStart + 12 * RESET + 200; // 6040ms
+    const allGreenAt  = START + total * FORWARD;
+    const resetStart  = allGreenAt + HOLD;
+    const successHide = resetStart + total * RESET + 200;
 
     const ts: ReturnType<typeof setTimeout>[] = [];
 
-    // Light up steps 1→12
-    for (let s = 1; s <= 12; s++) {
+    // Light up steps 1→N
+    for (let s = 1; s <= total; s++) {
       ts.push(setTimeout(() =>
         setIntroActive(prev => new Set([...prev, s])),
         START + s * FORWARD
@@ -272,8 +308,8 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
     // Show success banner after all are green
     ts.push(setTimeout(() => setShowSuccess(true), allGreenAt + 180));
 
-    // Reset steps 1→12
-    for (let s = 1; s <= 12; s++) {
+    // Reset steps 1→N
+    for (let s = 1; s <= total; s++) {
       ts.push(setTimeout(() =>
         setIntroActive(prev => { const n = new Set(prev); n.delete(s); return n; }),
         resetStart + s * RESET
@@ -285,20 +321,15 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
     ts.push(setTimeout(() => setIntroDone(true), successHide + 350));
 
     return () => ts.forEach(clearTimeout);
-  }, []);
+  }, [total]);
 
-  const handleStepClick = (step: number) => {
+  const handleStepClick = (questionId: number) => {
     onClose();
-    router.push(`/coding-practice?step=${step}`);
-  };
-
-  const toggleStep = (step: number) => {
-    setCompletedSteps(prev => {
-      const next = new Set(prev);
-      if (next.has(step)) next.delete(step);
-      else next.add(step);
-      return next;
-    });
+    console.log("question id in step click", questionId)
+    setSelectedGameId(questionId.toString());
+    dispatch(setGameSteps({ gameSteps: sortedSteps }));
+    dispatch(setActiveProblemNumber({ activeProblemNumber: questionId }));
+    router.push(`/coding-practice`);
   };
 
   // true when a step should appear green (user-completed OR intro showcase)
@@ -307,7 +338,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
 
   // first incomplete step — this is where the pointer lives
   const nextStep = introDone
-    ? (Array.from({ length: 12 }, (_, i) => i + 1).find(s => !completedSteps.has(s)) ?? null)
+    ? (Array.from({ length: total }, (_, i) => i + 1).find(s => !completedSteps.has(s)) ?? null)
     : null;
 
   return (
@@ -638,7 +669,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       transition={{ delay: 0.24 }}
                     >
-                      12 Steps · Click to Start
+                      {total} Steps · Click to Start
                     </motion.p>
                   </div>
                   <motion.button
@@ -663,15 +694,17 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                     return (
                       <Fragment key={rowIndex}>
                         <div className="flex items-start">
-                          {row.map((step, colIndex) => {
+                          {row.map((item, colIndex) => {
+                            const stepNum = item.question_step_number;
+                            const qId = item.question_id;
                             const isLastInRow = colIndex === row.length - 1;
-                            const adjacentStep = isReverse ? step - 1 : step + 1;
-                            const bDelay = nodeDelay(Math.max(step, adjacentStep)) + 0.08;
-                            const isDone = isGreen(step);
-                            const isCurrentStep = step === nextStep;
+                            const adjacentStep = isReverse ? stepNum - 1 : stepNum + 1;
+                            const bDelay = nodeDelay(Math.max(stepNum, adjacentStep)) + 0.08;
+                            const isDone = isGreen(stepNum);
+                            const isCurrentStep = stepNum === nextStep;
 
                             return (
-                              <Fragment key={step}>
+                              <Fragment key={qId}>
                                 <div className="flex flex-col items-center relative" style={{ flexShrink: 0 }}>
 
                                   {/* ── YOU ARE HERE pointer ── */}
@@ -681,10 +714,10 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                     )}
                                   </AnimatePresence>
 
-                                  <div className="cursor-pointer" onClick={() => handleStepClick(step)}>
+                                  <div className="cursor-pointer" onClick={() => handleStepClick(qId)}>
                                     <AnimatePresence mode="wait">
                                       {isDone ? (
-                                        <CompletedBadge key="done" step={step} />
+                                        <CompletedBadge key="done" step={stepNum} />
                                       ) : (
                                         <motion.div
                                           key="normal"
@@ -699,12 +732,12 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                           initial={{ scale: 0, opacity: 0 }}
                                           animate={{ scale: 1, opacity: 1 }}
                                           exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
-                                          transition={{ delay: nodeDelay(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                          transition={{ delay: nodeDelay(stepNum), type: 'spring', stiffness: 440, damping: 16 }}
                                           whileHover={{ scale: 1.15 }}
                                           whileTap={{ scale: 0.9 }}
                                         >
                                           <span className="text-sm font-black select-none" style={{ color: accent }}>
-                                            {step}
+                                            {stepNum}
                                           </span>
 
                                           {/* One-time pop ring on entry */}
@@ -713,7 +746,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                             style={{ inset: -4, border: `2px solid ${accent}` }}
                                             initial={{ scale: 1, opacity: 0.7 }}
                                             animate={{ scale: 1.8, opacity: 0 }}
-                                            transition={{ delay: nodeDelay(step) + 0.08, duration: 0.6, ease: 'easeOut' }}
+                                            transition={{ delay: nodeDelay(stepNum) + 0.08, duration: 0.6, ease: 'easeOut' }}
                                           />
 
                                           {/* Sonar beacon rings — only on current step */}
@@ -749,14 +782,14 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                                     }}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    transition={{ delay: nodeDelay(step) + 0.22 }}
+                                    transition={{ delay: nodeDelay(stepNum) + 0.22 }}
                                   >
-                                    {STEP_LABELS[step - 1]}
+                                    STEP {stepNum}
                                   </motion.span>
                                 </div>
 
                                 {!isLastInRow && (() => {
-                                  const barIsComplete = isGreen(step) && isGreen(adjacentStep);
+                                  const barIsComplete = isGreen(stepNum) && isGreen(adjacentStep);
                                   return (
                                     <div className="flex-1 relative" style={{ paddingTop: 16 }}>
                                       <div
@@ -789,12 +822,16 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
 
                         {rowIndex < ROWS.length - 1 && (() => {
                           const isRight = rowIndex % 2 === 0;
-                          const connDelay = nodeDelay(isRight ? 5 : 9) + 0.08;
                           const currentRow = ROWS[rowIndex];
                           const nextRow = ROWS[rowIndex + 1];
-                          const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
-                          const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
-                          const verticalIsComplete = isGreen(currentStep) && isGreen(nextStep);
+                          const currentStepNum = isRight
+                            ? currentRow[currentRow.length - 1].question_step_number
+                            : currentRow[0].question_step_number;
+                          const nextStepNum = isRight
+                            ? nextRow[nextRow.length - 1].question_step_number
+                            : nextRow[0].question_step_number;
+                          const connDelay = nodeDelay(Math.max(currentStepNum, nextStepNum)) + 0.08;
+                          const verticalIsComplete = isGreen(currentStepNum) && isGreen(nextStepNum);
 
                           return (
                             <div className={`flex ${isRight ? 'justify-end' : 'justify-start'}`} style={{ height: 26 }}>
@@ -832,7 +869,7 @@ export default function GameDetailOverlay({ game, onClose }: { game: GameCard; o
                   style={{ color: 'rgba(255,255,255,0.18)' }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: nodeDelay(12) + 0.45 }}
+                  transition={{ delay: nodeDelay(Math.max(total, 1)) + 0.45 }}
                 >
                   Click a step to start coding · Tap anywhere to close
                 </motion.p>

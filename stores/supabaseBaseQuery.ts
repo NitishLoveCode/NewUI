@@ -11,8 +11,22 @@ unknown,
 unknown> = async ({method, table, params}) => {
     try{
         let result;
-        if(method === 'select'){
-            result = await supabase.from(table).select(params?.columns || '*');
+        if (method === 'select') {
+            let query = supabase.from(table).select(params?.columns || '*');
+            // Apply filters for all params except 'columns'
+            if (params) {
+                            Object.entries(params).forEach(([key, value]) => {
+                                if (key !== 'columns' && typeof value === 'string' && value) {
+                                    // value should be like 'eq.123'
+                                    const [op, val] = value.split('.');
+                                    if (op === 'eq') {
+                                        query = query.eq(key, val);
+                                    }
+                                    // Add more operators as needed (e.g., 'gt', 'lt', etc.)
+                                }
+                            });
+            }
+            result = await query;
         } else if(method === 'insert'){
             result = await supabase.from(table).insert(params?.data);
         } else if(method === 'update'){

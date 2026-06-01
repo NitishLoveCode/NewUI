@@ -13,7 +13,6 @@ import TrendingSports from '@/components/sections/TrendingSports';
 import LiveWinsTicker from '@/components/sections/LiveWinsTicker';
 import AuthDialog from '@/components/auth/AuthDialog';
 import { motion } from 'framer-motion';
-import { useGetmy_structure_dsa_topicQuery } from '@/stores/api';
 
 export default function HomePage() {
   const { isExpanded, toggle } = useSidebar();
@@ -30,9 +29,7 @@ export default function HomePage() {
 
   console.log('Current User:', user); // Check console to see user data
 
-  const {data: dsaTopic, isLoading: userLoading} = useGetmy_structure_dsa_topicQuery({});
- useGetmy_structure_dsa_topicQuery({});
-  useGetmy_structure_dsa_topicQuery({});
+  
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0f212e', color: '#fff' }}>

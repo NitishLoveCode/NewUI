@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
 import dynamic from 'next/dynamic';
+import { useAppDispatch, useAppSelector } from '@/stores/hooks';
+import {
+  setActiveProblemNumber,
+  type GameQuestionStep,
+} from '@/stores/codingPractice/activeStepSlice';
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -19,24 +24,7 @@ const Editor = dynamic(() => import('@monaco-editor/react'), {
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { num: 1,  label: 'Two Sum',       color: '#f97316', glow: 'rgba(249,115,22,0.5)',  solved: true  },
-  { num: 2,  label: 'Valid Parens',  color: '#eab308', glow: 'rgba(234,179,8,0.5)',   solved: true  },
-  { num: 3,  label: 'Merge Lists',   color: '#4ade80', glow: 'rgba(74,222,128,0.5)',  solved: true  },
-  { num: 4,  label: 'Binary Search', color: '#22d3ee', glow: 'rgba(34,211,238,0.6)',  solved: false },
-  { num: 5,  label: 'LRU Cache',     color: '#818cf8', glow: 'rgba(129,140,248,0.5)', solved: false },
-  { num: 6,  label: 'Graph DFS',     color: '#c084fc', glow: 'rgba(192,132,252,0.5)', solved: false },
-  { num: 7,  label: 'DP Coins',      color: '#f472b6', glow: 'rgba(244,114,182,0.5)', solved: false },
-  { num: 8,  label: 'Trie Build',    color: '#fb7185', glow: 'rgba(251,113,133,0.5)', solved: false },
-  { num: 9,  label: 'Two Sum',       color: '#f97316', glow: 'rgba(249,115,22,0.5)',  solved: false },
-  { num: 10, label: 'Valid Parens',  color: '#eab308', glow: 'rgba(234,179,8,0.5)',   solved: false },
-  { num: 11, label: 'Merge Lists',   color: '#4ade80', glow: 'rgba(74,222,128,0.5)',  solved: false },
-  { num: 12, label: 'Binary Search', color: '#22d3ee', glow: 'rgba(34,211,238,0.6)',  solved: false },
-  { num: 13, label: 'LRU Cache',     color: '#818cf8', glow: 'rgba(129,140,248,0.5)', solved: false },
-  { num: 14, label: 'Graph DFS',     color: '#c084fc', glow: 'rgba(192,132,252,0.5)', solved: false },
-  { num: 15, label: 'DP Coins',      color: '#f472b6', glow: 'rgba(244,114,182,0.5)', solved: false },
-  { num: 16, label: 'Trie Build',    color: '#fb7185', glow: 'rgba(251,113,133,0.5)', solved: false },
-];
+
 
 const INITIAL_CHAT = [
   { id: 1, user: 'Alex', avatar: '🧑‍💻', msg: "Let's tackle edge cases first!", time: '10:42', me: false, color: '#22d3ee' },
@@ -171,11 +159,18 @@ function rand(min: number, max: number) {
 
 // ─── Steps Progress Bar ───────────────────────────────────────────────────────
 
-const ROWS_STEPS: number[][] = [
-  [1, 2, 3, 4],
-  [8, 7, 6, 5],
-  [9, 10, 11, 12],
+// Cycling color palette used when steps come from the API
+const STEP_PALETTE: { color: string; glow: string }[] = [
+  { color: '#f97316', glow: 'rgba(249,115,22,0.5)'  },
+  { color: '#eab308', glow: 'rgba(234,179,8,0.5)'   },
+  { color: '#4ade80', glow: 'rgba(74,222,128,0.5)'  },
+  { color: '#22d3ee', glow: 'rgba(34,211,238,0.6)'  },
+  { color: '#818cf8', glow: 'rgba(129,140,248,0.5)' },
+  { color: '#c084fc', glow: 'rgba(192,132,252,0.5)' },
+  { color: '#f472b6', glow: 'rgba(244,114,182,0.5)' },
+  { color: '#fb7185', glow: 'rgba(251,113,133,0.5)' },
 ];
+const getStepStyle = (stepNum: number) => STEP_PALETTE[(stepNum - 1) % STEP_PALETTE.length];
 
 const NODE_START_VAL = 0.28;
 const NODE_GAP_VAL = 0.11;
@@ -215,18 +210,54 @@ function CompletedStepBadge({ step }: { step: number }) {
   );
 }
 
-function StepsBar({ current, onStep }: { current: number; onStep: (n: number) => void }) {
+function StepsBar() {
+  const dispatch = useAppDispatch();
+  const steps = useAppSelector(s => s.activeStep.gameSteps);
+  const currentQuestionId = useAppSelector(s => s.activeStep.activeProblemNumber);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const solvedCount = STEPS.filter(s => s.solved).length;
 
-  const handleStepClick = (step: number) => {
+  // Responsive column count — 3 on mobile, 4 on desktop
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const update = () => setCols(window.innerWidth < 768 ? 3 : 4);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Sort steps by step number and chunk into snake-pattern rows
+  const sortedSteps = useMemo(
+    () => [...steps].sort((a, b) => a.question_step_number - b.question_step_number),
+    [steps]
+  );
+  const total = sortedSteps.length;
+  const ROWS = useMemo<GameQuestionStep[][]>(() => {
+    const result: GameQuestionStep[][] = [];
+    for (let i = 0; i < sortedSteps.length; i += cols) {
+      const chunk = sortedSteps.slice(i, i + cols);
+      const rowIndex = result.length;
+      result.push(rowIndex % 2 === 1 ? [...chunk].reverse() : chunk);
+    }
+    return result;
+  }, [sortedSteps, cols]);
+
+  // Current step number (1..N) derived from the active question id
+  const currentStepNum = useMemo(() => {
+    const match = sortedSteps.find(s => s.question_id === currentQuestionId);
+    return match?.question_step_number ?? null;
+  }, [sortedSteps, currentQuestionId]);
+
+  const handleStepClick = (item: GameQuestionStep) => {
+
+    console.log("hello ia m itsm", item)
+    
     setCompletedSteps(prev => {
       const next = new Set(prev);
-      if (next.has(step)) next.delete(step);
-      else next.add(step);
+      if (next.has(item.question_step_number)) next.delete(item.question_step_number);
+      else next.add(item.question_step_number);
       return next;
     });
-    onStep(step);
+    dispatch(setActiveProblemNumber({ activeProblemNumber: item.question_id }));
   };
 
   return (
@@ -253,63 +284,66 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
         >
           <span className="text-xs font-bold text-white/70">Progress Journey</span>
           <span className="text-xs font-black" style={{ color: '#22d3ee' }}>
-            {solvedCount}<span className="text-white/30 font-normal">/16</span>
+            {completedSteps.size}<span className="text-white/30 font-normal">/{total}</span>
           </span>
         </motion.div>
 
         {/* Zig-zag animation path */}
         <div>
-          {ROWS_STEPS.map((row, rowIndex) => {
+          {ROWS.map((row, rowIndex) => {
             const isReverse = rowIndex % 2 === 1;
 
             return (
               <Fragment key={rowIndex}>
                 {/* Row of nodes */}
                 <div className="flex items-start">
-                  {row.map((step, colIndex) => {
+                  {row.map((item, colIndex) => {
+                    const stepNum = item.question_step_number;
+                    const qId = item.question_id;
+                    const style = getStepStyle(stepNum);
                     const isLastInRow = colIndex === row.length - 1;
-                    const adjacentStep = isReverse ? step - 1 : step + 1;
-                    const bDelay = nodeDelayFunc(Math.max(step, adjacentStep)) + 0.08;
-                    const isDone = completedSteps.has(step);
-                    const isCurrent = step === current;
+                    const adjacentStep = isReverse ? stepNum - 1 : stepNum + 1;
+                    const bDelay = nodeDelayFunc(Math.max(stepNum, adjacentStep)) + 0.08;
+                    const isDone = completedSteps.has(stepNum);
+                    const isCurrent = stepNum === currentStepNum;
 
                     return (
-                      <Fragment key={step}>
+                      <Fragment key={qId}>
                         <div className="flex flex-col items-center" style={{ flexShrink: 0 }}>
                           <div
                             className="cursor-pointer"
-                            onClick={() => handleStepClick(step)}
+                            onClick={() => handleStepClick(item)}
                           >
                             <AnimatePresence mode="wait">
                               {isDone ? (
-                                <CompletedStepBadge key="done" step={step} />
+                                <CompletedStepBadge key="done" step={stepNum} />
                               ) : (
                                 <motion.div
                                   key="normal"
                                   className="relative w-11 h-11 rounded-full flex items-center justify-center"
                                   style={{
                                     background: isCurrent
-                                      ? `linear-gradient(135deg, ${STEPS[step - 1].color}bb, ${STEPS[step - 1].color}77)`
+                                      ? `linear-gradient(135deg, ${style.color}bb, ${style.color}77)`
                                       : 'linear-gradient(145deg, #1c3350 0%, #0d1f30 100%)',
-                                    border: `2.5px solid ${STEPS[step - 1].color}`,
+                                    border: `2.5px solid ${style.color}`,
                                     boxShadow: isCurrent
-                                      ? `0 0 18px ${STEPS[step - 1].glow}, inset 0 1px 0 rgba(255,255,255,0.14)`
-                                      : `0 0 18px ${STEPS[step - 1].glow}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
+                                      ? `0 0 18px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.14)`
+                                      : `0 0 18px ${style.glow}44, inset 0 1px 0 rgba(255,255,255,0.14)`,
                                   }}
                                   initial={{ scale: 0, opacity: 0 }}
                                   animate={{ scale: 1, opacity: 1 }}
                                   exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
-                                  transition={{ delay: nodeDelayFunc(step), type: 'spring', stiffness: 440, damping: 16 }}
+                                  transition={{ delay: nodeDelayFunc(stepNum), type: 'spring', stiffness: 440, damping: 16 }}
                                   whileHover={{ scale: 1.12 }}
                                   whileTap={{ scale: 0.9 }}
                                 >
-                                  <span className="text-sm font-black select-none" style={{ color: STEPS[step - 1].color }}>
-                                    {step}
+                                  <span className="text-sm font-black select-none" style={{ color: style.color }}>
+                                    {stepNum}
                                   </span>
                                   {isCurrent && (
                                     <motion.div
                                       className="absolute rounded-full pointer-events-none"
-                                      style={{ inset: -6, border: `2px solid ${STEPS[step - 1].color}` }}
+                                      style={{ inset: -6, border: `2px solid ${style.color}` }}
                                       animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
                                       transition={{ duration: 1.6, repeat: Infinity }}
                                     />
@@ -322,27 +356,27 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
                           <motion.span
                             className="text-[8px] font-bold uppercase mt-1.5 leading-none text-center"
                             style={{
-                              color: isDone ? '#4ade80' : isCurrent ? STEPS[step - 1].color : `${STEPS[step - 1].color}70`,
+                              color: isDone ? '#4ade80' : isCurrent ? style.color : `${style.color}70`,
                               width: 44,
                               display: 'block',
                               letterSpacing: '0.06em',
                             }}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: nodeDelayFunc(step) + 0.22 }}
+                            transition={{ delay: nodeDelayFunc(stepNum) + 0.22 }}
                           >
-                            Q{step}
+                            Q{stepNum}
                           </motion.span>
                         </div>
 
                         {/* Connecting bar */}
                         {!isLastInRow && (() => {
-                          const barIsComplete = completedSteps.has(step) && completedSteps.has(adjacentStep);
+                          const barIsComplete = completedSteps.has(stepNum) && completedSteps.has(adjacentStep);
                           return (
                             <div className="flex-1 relative" style={{ paddingTop: 16 }}>
                               <div
                                 className="h-[11px] w-full rounded-sm"
-                                style={{ background: barIsComplete ? '#4ade8020' : `${STEPS[step - 1].color}12` }}
+                                style={{ background: barIsComplete ? '#4ade8020' : `${style.color}12` }}
                               />
                               <motion.div
                                 className="absolute left-0 right-0 h-[11px] rounded-sm"
@@ -350,10 +384,10 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
                                   top: 16,
                                   background: barIsComplete
                                     ? `linear-gradient(90deg, #4ade80, #4ade8099)`
-                                    : `linear-gradient(90deg, ${STEPS[step - 1].color}, ${STEPS[step - 1].color}bb)`,
+                                    : `linear-gradient(90deg, ${style.color}, ${style.color}bb)`,
                                   boxShadow: barIsComplete
                                     ? `0 0 12px #4ade8066, 0 2px 6px rgba(0,0,0,0.45)`
-                                    : `0 0 12px ${STEPS[step - 1].color}66, 0 2px 6px rgba(0,0,0,0.45)`,
+                                    : `0 0 12px ${style.color}66, 0 2px 6px rgba(0,0,0,0.45)`,
                                   transformOrigin: isReverse ? 'right center' : 'left center',
                                 }}
                                 initial={{ scaleX: 0 }}
@@ -369,14 +403,20 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
                 </div>
 
                 {/* Vertical connector */}
-                {rowIndex < ROWS_STEPS.length - 1 && (() => {
+                {rowIndex < ROWS.length - 1 && (() => {
                   const isRight = rowIndex % 2 === 0;
-                  const connDelay = nodeDelayFunc(isRight ? 5 : 9) + 0.08;
-                  const currentRow = ROWS_STEPS[rowIndex];
-                  const nextRow = ROWS_STEPS[rowIndex + 1];
-                  const currentStep = isRight ? currentRow[currentRow.length - 1] : currentRow[0];
-                  const nextStep = isRight ? nextRow[nextRow.length - 1] : nextRow[0];
-                  const verticalIsComplete = completedSteps.has(currentStep) && completedSteps.has(nextStep);
+                  const currentRow = ROWS[rowIndex];
+                  const nextRow = ROWS[rowIndex + 1];
+                  const currentStepNumber = isRight
+                    ? currentRow[currentRow.length - 1].question_step_number
+                    : currentRow[0].question_step_number;
+                  const nextStepNumber = isRight
+                    ? nextRow[nextRow.length - 1].question_step_number
+                    : nextRow[0].question_step_number;
+                  const connDelay = nodeDelayFunc(Math.max(currentStepNumber, nextStepNumber)) + 0.08;
+                  const verticalIsComplete =
+                    completedSteps.has(currentStepNumber) && completedSteps.has(nextStepNumber);
+                  const cStyle = getStepStyle(currentStepNumber);
 
                   return (
                     <div
@@ -386,7 +426,7 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
                       <div className="relative" style={{ width: 44 }}>
                         <div
                           className="absolute rounded-sm"
-                          style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${STEPS[currentStep - 1].color}12` }}
+                          style={{ left: '50%', transform: 'translateX(-50%)', width: 11, top: 0, bottom: 0, background: verticalIsComplete ? '#4ade8020' : `${cStyle.color}12` }}
                         />
                         <motion.div
                           className="absolute rounded-sm origin-top"
@@ -398,10 +438,10 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
                             bottom: 0,
                             background: verticalIsComplete
                               ? `linear-gradient(180deg, #4ade80, #4ade8099)`
-                              : `linear-gradient(180deg, ${STEPS[currentStep - 1].color}, ${STEPS[currentStep - 1].color}bb)`,
+                              : `linear-gradient(180deg, ${cStyle.color}, ${cStyle.color}bb)`,
                             boxShadow: verticalIsComplete
                               ? `0 0 12px #4ade8066`
-                              : `0 0 12px ${STEPS[currentStep - 1].color}66`,
+                              : `0 0 12px ${cStyle.color}66`,
                           }}
                           initial={{ scaleY: 0 }}
                           animate={{ scaleY: 1 }}
@@ -416,13 +456,19 @@ function StepsBar({ current, onStep }: { current: number; onStep: (n: number) =>
           })}
         </div>
 
+        {total === 0 && (
+          <p className="text-center text-[11px] py-6 text-white/40">
+            No steps available
+          </p>
+        )}
+
         {/* Footer info */}
         <motion.p
           className="text-center text-[10px] mt-6 font-medium tracking-widest uppercase"
           style={{ color: 'rgba(255,255,255,0.18)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: nodeDelayFunc(12) + 0.45 }}
+          transition={{ delay: nodeDelayFunc(Math.max(total, 1)) + 0.45 }}
         >
           Click steps to mark progress
         </motion.p>
@@ -1810,7 +1856,7 @@ function CollaborationArena({
 
       {/* Right: Steps + Video + Chat */}
       <div className="flex flex-col gap-3 flex-shrink-0 w-64 overflow-y-auto">
-        <StepsBar current={currentStep} onStep={() => {}} />
+        <StepsBar />
 
         <VideoCallBar
           isAnonymous={isAnonymous}
@@ -1964,19 +2010,27 @@ function CollaborationArena({
 // ─── Page Root ────────────────────────────────────────────────────────────────
 
 function CodingPracticeContent() {
-  
-const [stepParam, setStepParam] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
 
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  setStepParam(params.get('step'));
-}, []);
+  const [stepParam, setStepParam] = useState<string | null>(null);
 
+  // Read ?step= on mount (backward-compat with old URLs) and push into redux
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sp = params.get('step');
+    setStepParam(sp);
+    if (sp && !activeProblemNumber) {
+      const parsed = parseInt(sp, 10);
+      if (!Number.isNaN(parsed)) {
+        dispatch(setActiveProblemNumber({ activeProblemNumber: parsed }));
+      }
+    }
+  }, [dispatch, activeProblemNumber]);
 
-const initialStep = stepParam ? parseInt(stepParam, 10) : 4;
-  const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('idle');
+  const currentStep = activeProblemNumber ?? 0;
+  const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('connected');
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [currentStep, setCurrentStep] = useState(initialStep);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -2044,7 +2098,7 @@ const initialStep = stepParam ? parseInt(stepParam, 10) : 4;
 
   return (
     <div
-      className="flex flex-col"
+      className="flex flex-row"
       style={{
         background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
         height: 'calc(100vh - 3.5rem)',
@@ -2053,7 +2107,7 @@ const initialStep = stepParam ? parseInt(stepParam, 10) : 4;
     >
       {connectionState !== 'connected' && (
         <div className="mb-3">
-          <StepsBar current={currentStep} onStep={setCurrentStep} />
+          <StepsBar />
         </div>
       )}
 

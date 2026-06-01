@@ -10,6 +10,9 @@ import GameDetailOverlay from '@/components/overlays/GameDetailOverlay';
 import PremiumReveal from '@/components/overlays/PremiumReveal';
 import { trendingGames } from '@/data/games';
 import type { GameCard } from '@/types';
+import { useGetmy_structure_dsa_question_topicsQuery } from '@/stores/api';
+import { useDispatch } from 'react-redux';
+import { setStepName, setStepNumber } from '@/stores/codingPractice/activeStepSlice';
 
 const MOBILE_INITIAL = 6;
 
@@ -18,10 +21,34 @@ export default function TrendingGames() {
   const [selectedGame, setSelectedGame] = useState<GameCard | null>(null);
   const [revealGame, setRevealGame] = useState<GameCard | null>(null);
   const pendingRef = useRef<GameCard | null>(null);
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const dispatch = useDispatch()
+
+  // Call the hook at the top level, only when selectedGameId is set
+  const { data, error } = useGetmy_structure_dsa_question_topicsQuery(selectedGameId!, {
+    skip: !selectedGameId,
+  });
+
+
+  console.log("i am data", data)
+
+
+  // const getQuestionDataById = (id: string) => {
+  //   const { data, error } = useGetmy_structure_dsa_question_topicsQuery(id);
+  //   console.log('API response for question data:', { data, error });
+
+  //   if (error) {
+  //     console.error('Error fetching question data:', error);
+  //     return null;
+  //   }
+  // }
 
   const handleCardClick = (game: GameCard) => {
+    dispatch(setStepNumber({ stepNumber: game.id })); 
+    dispatch(setStepName({ stepName: game.title })); 
     pendingRef.current = game;
     setRevealGame(game);
+    setSelectedGameId(game.id) // Fetch question data when a card is clicked
   };
 
   const handleRevealComplete = useCallback(() => {
@@ -47,7 +74,7 @@ export default function TrendingGames() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.3 }}
           >
-            <GameCardComponent game={game} onClick={() => handleCardClick(game)} />
+            <GameCardComponent  game={game} onClick={() => handleCardClick(game)} />
           </motion.div>
         ))}
       </div>
@@ -136,6 +163,7 @@ export default function TrendingGames() {
           <GameDetailOverlay
             key={selectedGame.id}
             game={selectedGame}
+            steps={Array.isArray(data) ? data : []}
             onClose={() => setSelectedGame(null)}
           />
         )}
