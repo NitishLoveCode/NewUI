@@ -10,7 +10,7 @@ import GameDetailOverlay from '@/components/overlays/GameDetailOverlay';
 import PremiumReveal from '@/components/overlays/PremiumReveal';
 import { trendingGames } from '@/data/games';
 import type { GameCard } from '@/types';
-import { useGetmy_structure_dsa_question_topicsQuery } from '@/stores/api';
+import { useGetDsaStepsByIdQuery } from '@/stores/api';
 import { useDispatch } from 'react-redux';
 import { setStepName, setStepNumber } from '@/stores/codingPractice/activeStepSlice';
 
@@ -25,26 +25,16 @@ export default function TrendingGames() {
   const dispatch = useDispatch()
 
   // Call the hook at the top level, only when selectedGameId is set
-  const { data, error } = useGetmy_structure_dsa_question_topicsQuery(selectedGameId!, {
+  const { data } = useGetDsaStepsByIdQuery(selectedGameId!, {
     skip: !selectedGameId,
   });
 
+  
 
-  console.log("i am data", data)
-
-
-  // const getQuestionDataById = (id: string) => {
-  //   const { data, error } = useGetmy_structure_dsa_question_topicsQuery(id);
-  //   console.log('API response for question data:', { data, error });
-
-  //   if (error) {
-  //     console.error('Error fetching question data:', error);
-  //     return null;
-  //   }
-  // }
 
   const handleCardClick = (game: GameCard) => {
-    dispatch(setStepNumber({ stepNumber: game.id })); 
+    const stepNumber = Number.parseInt(game.id, 10);
+    dispatch(setStepNumber({ stepNumber })); 
     dispatch(setStepName({ stepName: game.title })); 
     pendingRef.current = game;
     setRevealGame(game);
@@ -122,7 +112,7 @@ export default function TrendingGames() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 mt-1 px-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#00e701' }} />
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: '#00e701' }} />
                   <span className="text-[10px]" style={{ color: '#b1bad3' }}>
                     <span className="font-semibold text-white">{game.playing}</span> solving
                   </span>

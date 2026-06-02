@@ -3,6 +3,7 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import {
   persistReducer,
   persistStore,
+  type PersistConfig,
   FLUSH,
   REHYDRATE,
   PAUSE,
@@ -13,20 +14,26 @@ import {
 import storage from "redux-persist/lib/storage";
 import { api } from "./api";
 import activeStepSlice from "./codingPractice/activeStepSlice";
+import codingStepsSlice from "./codingSteps/codingStepsSlice";
+import problomsSetSlice  from "./problomsSet/problomsSetSlice";
 
 const rootReducer = combineReducers({
   [api.reducerPath]: api.reducer,
   activeStep: activeStepSlice,
+  codingSteps: codingStepsSlice,
+  problomsSet: problomsSetSlice
 });
 
-const persistConfig = {
+type RootReducerState = ReturnType<typeof rootReducer>;
+
+const persistConfig: PersistConfig<RootReducerState> = {
   key: "root",
   version: 1,
   storage,
   whitelist: ["activeStep"],
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const persistedReducer = persistReducer<RootReducerState>(persistConfig, rootReducer);
 
 export const makeStore = () => {
   const store = configureStore({
@@ -45,7 +52,7 @@ export const makeStore = () => {
 export type AppStoreBundle = ReturnType<typeof makeStore>;
 export type AppStore = AppStoreBundle["store"];
 export type AppPersistor = AppStoreBundle["persistor"];
-export type RootState = ReturnType<AppStore["getState"]>;
+export type RootState = ReturnType<typeof rootReducer>;
 export type AppDispatch = AppStore["dispatch"];
 
 export { setupListeners };

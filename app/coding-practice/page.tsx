@@ -17,6 +17,9 @@ import {
   setActiveProblemNumber,
   type GameQuestionStep,
 } from '@/stores/codingPractice/activeStepSlice';
+import { useGetDsaQuestionsQuery } from '@/stores/api';
+
+type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -116,7 +119,27 @@ const LANGUAGE_OPTIONS = [
   { id: 'python', name: 'Python',     icon: '🐍', color: '#3776ab' },
   { id: 'java',   name: 'Java',       icon: '☕', color: '#007396' },
   { id: 'cpp',    name: 'C++',        icon: '⬚', color: '#00599c' },
-];
+] as const;
+
+const FALLBACK_LANGUAGE_OPTIONS = [...LANGUAGE_OPTIONS];
+
+const normalizeLanguage = (language: string | null | undefined): SupportedLanguage | null => {
+  const value = language?.toLowerCase();
+  if (value === 'js' || value === 'javascript') return 'js';
+  if (value === 'python' || value === 'py') return 'python';
+  if (value === 'java') return 'java';
+  if (value === 'cpp' || value === 'c++') return 'cpp';
+  return null;
+};
+
+const getMonacoLanguage = (language: SupportedLanguage) =>
+  ({ js: 'javascript', python: 'python', java: 'java', cpp: 'cpp' }[language]);
+
+const getEditorFileName = (language: SupportedLanguage) =>
+  ({ js: 'solution.js', python: 'solution.py', java: 'Main.java', cpp: 'solution.cpp' }[language]);
+
+const toTitleCase = (value: string | null | undefined) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
 
 const TERMINAL_LINES = [
   { text: '> Running 4 test cases…',                    color: '#94a3b8' },
@@ -644,6 +667,21 @@ function ConnectionSearching({ isAnonymous, onCancel }: { isAnonymous: boolean; 
 
 function ProblemStatement() {
   const [expanded, setExpanded] = useState(false);
+  const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
+  const questionId = activeProblemNumber?.toString() ?? null;
+  const { data: questionData } = useGetDsaQuestionsQuery(questionId!, {
+    skip: !questionId,
+  });
+  const problem = questionData?.question?.[0];
+  const problemTitle = problem?.title ?? PROBLEM.title;
+  const difficulty = toTitleCase(problem?.difficulty) || PROBLEM.difficulty;
+  const statementHtml = problem?.statement?.trim();
+  const metaPrimary = problem ? `Question #${problem.id}` : `❤️ ${PROBLEM.likes}`;
+  const metaSecondary = problem
+    ? problem.is_premium
+      ? 'Premium'
+      : 'Free'
+    : `AC: ${PROBLEM.acceptance}`;
 
   return (
     <motion.div
@@ -663,14 +701,14 @@ function ProblemStatement() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <BookOpen size={14} style={{ color: '#22d3ee' }} />
-            <span className="text-sm font-bold text-white">{PROBLEM.title}</span>
+            <span className="text-sm font-bold text-white">{problemTitle}</span>
             <span className="px-2 py-0.5 rounded-md text-xs font-bold" style={{ background: '#4ade8022', color: '#4ade80', border: '1px solid #4ade8030' }}>
-              {PROBLEM.difficulty}
+              {difficulty}
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            <span>❤️ {PROBLEM.likes}</span>
-            <span>AC: {PROBLEM.acceptance}</span>
+            <span>{metaPrimary}</span>
+            <span>{metaSecondary}</span>
           </div>
         </div>
         <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
@@ -688,30 +726,39 @@ function ProblemStatement() {
             className="overflow-hidden"
           >
             <div className="px-4 py-4 space-y-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              <p>{PROBLEM.description}</p>
+              {statementHtml ? (
+                <div
+                  className="prose prose-invert prose-sm max-w-none [&_pre]:whitespace-pre-wrap [&_pre]:rounded-lg [&_pre]:bg-white/5 [&_pre]:p-3 [&_.text-black]:text-white [&_.text-gray-300]:text-white/80 [&_.text-gray-400]:text-white/65 [&_.border-gray-200]:border-white/10 [&_.border-gray-400]:border-white/10"
+                  dangerouslySetInnerHTML={{ __html: statementHtml }}
+                />
+              ) : (
+                <>
+                  <p>{problem?.description ?? PROBLEM.description}</p>
 
-              <div>
-                <span className="font-bold text-white text-sm">Examples</span>
-                {PROBLEM.examples.map((ex, i) => (
-                  <div key={i} className="mt-2 text-xs rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="text-white/50 mb-0.5">Input: <span className="text-white/80 font-mono">{ex.input}</span></div>
-                    <div className="text-white/50 mb-0.5">Output: <span className="text-white/80 font-mono">{ex.output}</span></div>
-                    <div style={{ color: 'rgba(255,255,255,0.35)' }}>{ex.explain}</div>
+                  <div>
+                    <span className="font-bold text-white text-sm">Examples</span>
+                    {PROBLEM.examples.map((ex, i) => (
+                      <div key={i} className="mt-2 text-xs rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="text-white/50 mb-0.5">Input: <span className="text-white/80 font-mono">{ex.input}</span></div>
+                        <div className="text-white/50 mb-0.5">Output: <span className="text-white/80 font-mono">{ex.output}</span></div>
+                        <div style={{ color: 'rgba(255,255,255,0.35)' }}>{ex.explain}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div>
-                <span className="font-bold text-white text-sm">Constraints</span>
-                <ul className="mt-2 space-y-1">
-                  {PROBLEM.constraints.map((c, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span style={{ color: '#22d3ee' }}>•</span>
-                      <span className="font-mono">{c}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <div>
+                    <span className="font-bold text-white text-sm">Constraints</span>
+                    <ul className="mt-2 space-y-1">
+                      {PROBLEM.constraints.map((c, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span style={{ color: '#22d3ee' }}>•</span>
+                          <span className="font-mono">{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -735,21 +782,69 @@ function CodeEditorPanel({
   isRecording: boolean;
 }) {
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  const [language, setLanguage] = useState<'js' | 'python' | 'java' | 'cpp'>('js');
+  const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
+  const questionId = activeProblemNumber?.toString() ?? null;
+  const { data: questionData } = useGetDsaQuestionsQuery(questionId!, {
+    skip: !questionId,
+  });
+  const [language, setLanguage] = useState<SupportedLanguage>('js');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [editableCode, setEditableCode] = useState('');
   const [fontSize, setFontSize] = useState(13);
-  const currentCode = CODE_BY_LANGUAGE[language] || CODE_LINES;
-  const langOption = LANGUAGE_OPTIONS.find(l => l.id === language)!;
+  const starterCodes = questionData?.starterCode ?? [];
+  const solutions = questionData?.solutions ?? [];
+  const availableLanguages = useMemo(() => {
+    const seen = new Set<SupportedLanguage>();
+    const fromApi = [...starterCodes, ...solutions]
+      .map((item) => normalizeLanguage(item.language))
+      .filter((item): item is SupportedLanguage => Boolean(item))
+      .filter((item) => {
+        if (seen.has(item)) return false;
+        seen.add(item);
+        return true;
+      })
+      .map((id) => FALLBACK_LANGUAGE_OPTIONS.find((option) => option.id === id))
+      .filter((option): option is (typeof FALLBACK_LANGUAGE_OPTIONS)[number] => Boolean(option));
 
-  const getMonacoLanguage = (lang: string) => ({ js: 'javascript', python: 'python', java: 'java', cpp: 'cpp' }[lang] || 'javascript');
+    return fromApi.length ? fromApi : FALLBACK_LANGUAGE_OPTIONS;
+  }, [starterCodes, solutions]);
+  const langOption = availableLanguages.find((item) => item.id === language) ?? availableLanguages[0];
+  const starterCodeEntry = starterCodes.find((item) => normalizeLanguage(item.language) === language)
+    ?? starterCodes.find((item) => item.is_default)
+    ?? starterCodes[0];
+  const solutionEntry = solutions.find((item) => normalizeLanguage(item.language) === language)
+    ?? solutions.find((item) => item.is_default)
+    ?? solutions[0];
+  const codeTemplate = starterCodeEntry?.starter_code
+    ?? solutionEntry?.solution_code
+    ?? (CODE_BY_LANGUAGE[language] || CODE_LINES).map(line => line.text).join('\n');
+
+  const defaultLanguage = useMemo(
+    () =>
+      normalizeLanguage(
+        starterCodes.find((item) => item.is_default)?.language
+        ?? solutions.find((item) => item.is_default)?.language
+        ?? availableLanguages[0]?.id
+      ) ?? 'js',
+    [availableLanguages, solutions, starterCodes]
+  );
 
   useEffect(() => {
-    setEditableCode(currentCode.map(line => line.text).join('\n'));
-  }, [currentCode, language]);
+    setLanguage(defaultLanguage);
+  }, [defaultLanguage, questionId]);
 
-  const handleLanguageChange = (newLang: 'js' | 'python' | 'java' | 'cpp') => {
+  useEffect(() => {
+    if (!availableLanguages.some((item) => item.id === language)) {
+      setLanguage(defaultLanguage);
+    }
+  }, [availableLanguages, defaultLanguage, language]);
+
+  useEffect(() => {
+    setEditableCode(codeTemplate);
+  }, [codeTemplate, language, questionId]);
+
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
     if (newLang !== language) {
       setLanguage(newLang);
       setShowLangMenu(false);
@@ -781,7 +876,7 @@ function CodeEditorPanel({
           <div className="w-3 h-3 rounded-full bg-green-500/70" />
         </div>
 
-        <span className="text-xs text-white/35 font-mono ml-1">solution.js</span>
+  <span className="text-xs text-white/35 font-mono ml-1">{getEditorFileName(langOption.id)}</span>
 
         {/* Timer */}
         <div
@@ -832,10 +927,10 @@ function CodeEditorPanel({
                 className="absolute top-full mt-1 left-0 z-20 rounded-xl overflow-hidden shadow-2xl"
                 style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.1)', minWidth: 130 }}
               >
-                {LANGUAGE_OPTIONS.map((lang) => (
+                {availableLanguages.map((lang) => (
                   <motion.button
                     key={lang.id}
-                    onClick={() => handleLanguageChange(lang.id as 'js' | 'python' | 'java' | 'cpp')}
+                    onClick={() => handleLanguageChange(lang.id)}
                     whileHover={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left"
                     style={{ color: lang.id === language ? lang.color : 'rgba(255,255,255,0.55)' }}
@@ -1059,8 +1154,57 @@ function ChatDrawer({
   const [showFiles, setShowFiles] = useState(false);
   const [keyboardShareEnabled, setKeyboardShareEnabled] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
-  const [language, setLanguage] = useState('js');
+  const questionId = currentStep ? currentStep.toString() : null;
+  const { data: questionData } = useGetDsaQuestionsQuery(questionId!, {
+    skip: !questionId,
+  });
+  const [language, setLanguage] = useState<SupportedLanguage>('js');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const starterCodes = questionData?.starterCode ?? [];
+  const solutions = questionData?.solutions ?? [];
+  const availableLanguages = useMemo(() => {
+    const seen = new Set<SupportedLanguage>();
+    const fromApi = [...starterCodes, ...solutions]
+      .map((item) => normalizeLanguage(item.language))
+      .filter((item): item is SupportedLanguage => Boolean(item))
+      .filter((item) => {
+        if (seen.has(item)) return false;
+        seen.add(item);
+        return true;
+      })
+      .map((id) => FALLBACK_LANGUAGE_OPTIONS.find((option) => option.id === id))
+      .filter((option): option is (typeof FALLBACK_LANGUAGE_OPTIONS)[number] => Boolean(option));
+
+    return fromApi.length ? fromApi : FALLBACK_LANGUAGE_OPTIONS;
+  }, [starterCodes, solutions]);
+  const currentDrawerCode = (
+    starterCodes.find((item) => normalizeLanguage(item.language) === language)?.starter_code
+    ?? starterCodes.find((item) => item.is_default)?.starter_code
+    ?? solutions.find((item) => normalizeLanguage(item.language) === language)?.solution_code
+    ?? solutions.find((item) => item.is_default)?.solution_code
+    ?? CODE_BY_LANGUAGE[language]?.map(l => l.text).join('\n')
+  );
+
+  const defaultLanguage = useMemo(
+    () =>
+      normalizeLanguage(
+        starterCodes.find((item) => item.is_default)?.language
+        ?? solutions.find((item) => item.is_default)?.language
+        ?? availableLanguages[0]?.id
+      ) ?? 'js',
+    [availableLanguages, solutions, starterCodes]
+  );
+
+  useEffect(() => {
+    setLanguage(defaultLanguage);
+  }, [defaultLanguage, questionId]);
+
+  useEffect(() => {
+    if (!availableLanguages.some((item) => item.id === language)) {
+      setLanguage(defaultLanguage);
+    }
+  }, [availableLanguages, defaultLanguage, language]);
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   return (
@@ -1313,7 +1457,7 @@ function ChatDrawer({
                       <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
                       <div className="w-3 h-3 rounded-full bg-green-500/70" />
                     </div>
-                    <span className="text-xs text-blue-300 font-mono">solution.js</span>
+                    <span className="text-xs text-blue-300 font-mono">{getEditorFileName(language)}</span>
                   </div>
                   <div className="text-xs text-blue-300 font-semibold">Syncing...</div>
                 </div>
@@ -1323,7 +1467,10 @@ function ChatDrawer({
                   <span className="text-xs text-blue-300 font-semibold">Language:</span>
                   <select
                     value={language}
-                    onChange={e => setLanguage(e.target.value)}
+                    onChange={(e) => {
+                      const nextLanguage = normalizeLanguage(e.target.value) ?? 'js';
+                      setLanguage(nextLanguage);
+                    }}
                     className="text-xs font-semibold py-1 px-2 rounded border transition-all"
                     style={{
                       background: 'rgba(30,41,59,0.8)',
@@ -1331,7 +1478,7 @@ function ChatDrawer({
                       color: '#93c5fd',
                     }}
                   >
-                    {LANGUAGE_OPTIONS.map(l => (
+                    {availableLanguages.map(l => (
                       <option key={l.id} value={l.id} style={{ background: '#0d1117', color: 'white' }}>
                         {l.icon} {l.name}
                       </option>
@@ -1343,9 +1490,9 @@ function ChatDrawer({
                 <div className="flex-1 overflow-hidden">
                   <Editor
                     height="100%"
-                    language={language}
+                    language={getMonacoLanguage(language)}
                     theme="vs-dark"
-                    defaultValue={CODE_BY_LANGUAGE[language]?.map(l => l.text).join('\n')}
+                    value={currentDrawerCode}
                     options={{
                       minimap: { enabled: false },
                       fontSize: 12,

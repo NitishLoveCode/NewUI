@@ -8,7 +8,7 @@ import Image from 'next/image';
 import type { GameCard } from '@/types';
 import { useAppDispatch } from '@/stores/hooks';
 import { setActiveProblemNumber, setGameSteps } from '@/stores/codingPractice/activeStepSlice';
-import { useGetDsaQuestionQuery } from '@/stores/api';
+import { useGetDsaQuestionsQuery, useGetDsaStepsByIdQuery } from '@/stores/api';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -278,11 +278,15 @@ export default function GameDetailOverlay({
   const [introDone, setIntroDone]     = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const dispatch = useAppDispatch();
 
-  const { data, error } = useGetDsaQuestionQuery(selectedGameId!, {
+  const { data, error } = useGetDsaStepsByIdQuery(selectedGameId!, {
       skip: !selectedGameId,
     });
+  const {data: questionData} = useGetDsaQuestionsQuery(selectedQuestionId!, {
+      skip: !selectedQuestionId,
+  })
 
   useEffect(() => {
     if (total === 0) return;
@@ -326,7 +330,7 @@ export default function GameDetailOverlay({
   const handleStepClick = (questionId: number) => {
     onClose();
     console.log("question id in step click", questionId)
-    setSelectedGameId(questionId.toString());
+    setSelectedQuestionId(questionId.toString());
     dispatch(setGameSteps({ gameSteps: sortedSteps }));
     dispatch(setActiveProblemNumber({ activeProblemNumber: questionId }));
     router.push(`/coding-practice`);

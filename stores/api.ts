@@ -1,6 +1,19 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { supabaseBaseQuery } from "./supabaseBaseQuery";
 import { dsaTopic } from "@/types";
+import { Question, QuestionDetailsApiPayload, QuestionDetailsResponse, Solution, StarterCode } from "@/app/api/v1/get-question-set-by-question-id/route";
+
+type DsaRecord = Record<string, unknown>;
+type CodingStep = {
+  question_id: number;
+  question_step_number: number;
+};
+
+type DsaQuestionDetails = {
+  question: DsaRecord | null;
+  solutions: DsaRecord[];
+  starterCode?: DsaRecord | null;
+};
 
 export const api = createApi({
   reducerPath: "api",
@@ -8,48 +21,95 @@ export const api = createApi({
   // tagTypes: ["Game", "User"],
   endpoints: (build) => ({
 
-    // get all DSA topics for the user
-    getmy_structure_dsa_topic: build.query({
-      query: () => ({
-        method: "select",
-        table: "my_structure_dsa_topic",
-        params: {columns: "step_name, id"}
-      }),
-      transformResponse: (response: { data: dsaTopic[] }) =>
-        response?.data?.map((item) => ({ step_name: item.step_name, id: item.id })) || [],
-      }),
+    getDsaStepsById: build.query<CodingStep[], string | number>({
+      async queryFn(id) {
+        try {
+          const response = await fetch(`/api/v1/get-dsa-steps-by-id?id=${id}`);
+          const result = (await response.json()) as {
+            data?: CodingStep[] | null;
+            error?: { message?: string } | string | null;
+          };
 
-    // Get question data by ID
-    getmy_structure_dsa_question_topics: build.query({
-      query: (id: string) => ({
-        method: "select",
-        table: "my_structure_dsa_question_topics",
-        params: { 
-        columns: "question_id, question_step_number", 
-        my_structure_dsa_topic_id: `eq.${id}` 
-      }
-      }),
-      transformResponse: (response: { data: any[] }) => response || null,
+          if (!response.ok) {
+            return {
+              error: {
+                status: response.status,
+                data: result,
+              },
+            };
+          }
+
+          if (result.error) {
+            return {
+              error: {
+                status: 500,
+                data: result.error,
+              },
+            };
+          }
+
+          return { data: Array.isArray(result.data) ? result.data : [] };
+        } catch (error) {
+          return {
+            error: {
+              status: "FETCH_ERROR",
+              data: error instanceof Error ? error.message : String(error),
+            },
+          };
+        }
+      },
     }),
 
-    // get question data for a specific topic ID.
-    getDsaQuestion: build.query({
-      query: (id: string) => ({
-        method: "select",
-        table: "dsa_questions",
-        params: { 
-        columns: "*", 
-        id: `eq.${id}` 
-      }
-      }),
-      transformResponse: (response: { data: any[] }) => response || null,
+   getDsaQuestions: build.query<QuestionDetailsResponse, string | number>({
+      async queryFn(id) {
+        try {
+          const response = await fetch(`/api/v1/get-question-set-by-question-id?id=${id}`);
+          const result = (await response.json()) as QuestionDetailsApiPayload;
+        
+          if (!response.ok) {
+            return {
+              error: {
+                status: response.status,
+                data: result,
+              },
+            };
+          }
+        
+          if (result.questionError || result.solutionsError || result.starterCodeError) {
+            return {
+              error: {
+                status: 500,
+                data: {
+                  questionError: result.questionError,
+                  solutionsError: result.solutionsError,
+                  starterCodeError: result.starterCodeError,
+                },
+              },
+            };
+          }
+        
+          return {
+            data: {
+              question: Array.isArray(result.question) ? result.question : [],
+              solutions: Array.isArray(result.solutions) ? result.solutions : [],
+              starterCode: Array.isArray(result.starterCode) ? result.starterCode : [],
+            },
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 500,
+              data: error instanceof Error ? error.message : "Unknown error",
+            },
+          };
+        }
+      },
     }),
-
   }),
 });
 
 
-export const { useGetmy_structure_dsa_topicQuery, 
-  useGetmy_structure_dsa_question_topicsQuery,
-  useGetDsaQuestionQuery
- } = api;
+export const {
+  useGetDsaStepsByIdQuery,
+  useGetDsaQuestionsQuery,
+} = api;
