@@ -1,0 +1,29 @@
+{
+  "name": "collab-code-server",
+  "version": "1.0.0",
+  "description": "Production-ready collaborative coding backend with Piston code execution, Socket.IO real-time sync, and WebRTC signaling.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "lint": "eslint src --ext .js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^7.1.0",
+    "joi": "^17.13.3",
+    "morgan": "^1.10.0",
+    "socket.io": "^4.7.5",
+    "winston": "^3.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

@@ -1,0 +1,70 @@
+name: collab-code
+
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston
+    restart: unless-stopped
+    privileged: true
+    tmpfs:
+      - /piston/jobs
+    volumes:
+      - piston_packages:/piston/packages
+    ports:
+      - "2000:2000"
+    environment:
+      - PISTON_LOG_LEVEL=INFO
+      - PISTON_BIND_ADDRESS=0.0.0.0:2000
+      - PISTON_RUN_TIMEOUT=5000
+      - PISTON_COMPILE_TIMEOUT=10000
+      - PISTON_OUTPUT_MAX_SIZE=1048576
+      - PISTON_MAX_FILE_SIZE=1048576
+      - PISTON_DISABLE_NETWORKING=true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2000/api/v2/runtimes >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - collab-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: collab-code-backend:latest
+    container_name: collab-backend
+    restart: unless-stopped
+    depends_on:
+      piston:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PISTON_URL=http://piston:2000
+      - PISTON_TIMEOUT_MS=10000
+      - PISTON_RUN_TIMEOUT_MS=5000
+      - PISTON_COMPILE_TIMEOUT_MS=10000
+      - PISTON_MAX_MEMORY_BYTES=104857600
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX=60
+      - RUN_CODE_RATE_LIMIT_MAX=20
+      - LOG_LEVEL=info
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - collab-net
+
+volumes:
+  piston_packages:
+
+networks:
+  collab-net:
+    driver: bridge
