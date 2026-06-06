@@ -673,6 +673,7 @@ function ProblemStatement() {
     skip: !questionId,
   });
   const problem = questionData?.question?.[0];
+  const solutions = questionData?.solutions ?? [];
   const problemTitle = problem?.title ?? PROBLEM.title;
   const difficulty = toTitleCase(problem?.difficulty) || PROBLEM.difficulty;
   const statementHtml = problem?.statement?.trim();
@@ -725,7 +726,7 @@ function ProblemStatement() {
             transition={{ duration: 0.22 }}
             className="overflow-hidden"
           >
-            <div className="px-4 py-4 space-y-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            <div className="px-4 py-4 space-y-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)'}}>
               {statementHtml ? (
                 <div
                   className="prose prose-invert prose-sm max-w-none [&_pre]:whitespace-pre-wrap [&_pre]:rounded-lg [&_pre]:bg-white/5 [&_pre]:p-3 [&_.text-black]:text-white [&_.text-gray-300]:text-white/80 [&_.text-gray-400]:text-white/65 [&_.border-gray-200]:border-white/10 [&_.border-gray-400]:border-white/10"
@@ -759,6 +760,64 @@ function ProblemStatement() {
                   </div>
                 </>
               )}
+
+              <div className="pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Code2 size={14} style={{ color: '#22d3ee' }} />
+                  <span className="font-bold text-white text-sm">Solutions</span>
+                </div>
+
+                {solutions.length > 0 ? (
+                  <div className="space-y-3">
+                    {solutions.map((solution) => (
+                      <div
+                        key={solution.id}
+                        className="rounded-xl p-3"
+                        style={{
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                          <span className="text-sm font-bold text-white">{solution.language_label}</span>
+                          {solution.is_default && (
+                            <span
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide"
+                              style={{
+                                background: 'rgba(34,211,238,0.12)',
+                                border: '1px solid rgba(34,211,238,0.25)',
+                                color: '#22d3ee',
+                              }}
+                            >
+                              Default
+                            </span>
+                          )}
+                        </div>
+
+                        <pre
+                          className="overflow-x-auto rounded-lg p-3 text-[11px] leading-relaxed text-white/85"
+                          style={{
+                            background: 'rgba(10,15,26,0.85)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <code>{solution.solution_code}</code>
+                        </pre>
+
+                        {(solution.explanation || solution.time_complexity || solution.space_complexity) && (
+                          <div className="mt-3 space-y-1 text-[11px] text-white/60">
+                            {solution.explanation && <p>{solution.explanation}</p>}
+                            {solution.time_complexity && <p>Time: {solution.time_complexity}</p>}
+                            {solution.space_complexity && <p>Space: {solution.space_complexity}</p>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-white/40">No solutions available for this question yet.</p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
@@ -774,7 +833,7 @@ function CodeEditorPanel({
 }: {
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
-  onRun: () => void;
+  onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
   showTerminal: boolean;
   onToggleTerminal: () => void;
@@ -1016,7 +1075,7 @@ function CodeEditorPanel({
         <div className="flex-1" />
 
         <motion.button
-          onClick={onRun}
+          onClick={() => onRun({ code: editableCode, language })}
           disabled={codeRunState === 'running'}
           whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(74,222,128,0.4)' }}
           whileTap={{ scale: 0.97 }}
@@ -1147,7 +1206,7 @@ function ChatDrawer({
   onDisconnect: () => void;
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
-  onRun: () => void;
+  onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
   currentStep: number;
 }) {
@@ -1534,7 +1593,7 @@ function ChatDrawer({
                   </div>
                   <div className="flex gap-1.5">
                     <motion.button
-                      onClick={onRun}
+                      onClick={() => onRun({ code: currentDrawerCode, language })}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className="text-xs px-3 py-1.5 rounded font-semibold border transition-all"
@@ -1967,7 +2026,7 @@ function CollaborationArena({
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
   chatMessages: typeof INITIAL_CHAT; chatInput: string;
   onMute: () => void; onCamera: () => void; onRecording: () => void;
-  onRunCode: () => void; onSubmit: () => void; onSendChat: () => void;
+  onRunCode: (payload: { code: string; language: SupportedLanguage }) => void; onSubmit: () => void; onSendChat: () => void;
   onChatInput: (v: string) => void; onDisconnect: () => void; currentStep: number;
 }) {
   const [elapsed, setElapsed] = useState(0);
@@ -1983,7 +2042,7 @@ function CollaborationArena({
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
       {/* Left: Problem statement */}
-      <div className="w-60 flex-shrink-0 overflow-y-auto">
+      <div className="w-80 flex-shrink-0 overflow-y-auto">
         <ProblemStatement />
       </div>
 
@@ -2195,20 +2254,69 @@ function CodingPracticeContent() {
     searchTimer.current = setTimeout(() => setConnectionState('connected'), 3000);
   }, []);
 
-  const handleRunCode = useCallback(() => {
+  const handleRunCode = useCallback(async (payload: { code: string; language: SupportedLanguage }) => {
     if (codeRunState === 'running') return;
     setCodeRunState('running');
-    setTerminalLines([]);
-    let i = 0;
-    runInterval.current = setInterval(() => {
-      if (i < TERMINAL_LINES.length) {
-        setTerminalLines(prev => [...prev, TERMINAL_LINES[i]]);
-        i++;
-      } else {
-        if (runInterval.current) clearInterval(runInterval.current);
-        setCodeRunState('success');
+    setTerminalLines([{ text: `> Running ${payload.language}…`, color: '#94a3b8' }]);
+
+    try {
+      const response = await fetch('/api/v1/run-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: payload.language, code: payload.code }),
+      });
+
+      const data = await response.json();
+
+      const lines: { text: string; color: string }[] = [];
+
+      if (!response.ok) {
+        lines.push({ text: `✗ ${data?.error ?? 'Failed to run code.'}`, color: '#f87171' });
+        setTerminalLines(prev => [...prev, ...lines]);
+        setCodeRunState('idle');
+        return;
       }
-    }, 300);
+
+      const compileStderr: string = data?.compile?.stderr ?? '';
+      const runStdout: string = data?.run?.stdout ?? '';
+      const runStderr: string = data?.run?.stderr ?? '';
+      const exitCode: number | null = data?.run?.code ?? null;
+
+      if (compileStderr.trim()) {
+        lines.push({ text: '── Compile errors ──', color: '#334155' });
+        compileStderr.split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
+      }
+
+      if (runStdout.trim()) {
+        lines.push({ text: '── Output ──', color: '#334155' });
+        runStdout.split('\n').forEach(l => lines.push({ text: l, color: '#e2e8f0' }));
+      }
+
+      if (runStderr.trim()) {
+        lines.push({ text: '── Stderr ──', color: '#334155' });
+        runStderr.split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
+      }
+
+      if (lines.length === 0) {
+        lines.push({ text: '(no output)', color: '#64748b' });
+      }
+
+      lines.push({ text: '──────────────────────────────────', color: '#334155' });
+      const passed = exitCode === 0 && !runStderr.trim() && !compileStderr.trim();
+      lines.push({
+        text: passed
+          ? `✓ Process exited with code ${exitCode ?? 0}`
+          : `✗ Process exited with code ${exitCode ?? 'unknown'}`,
+        color: passed ? '#00e676' : '#f87171',
+      });
+
+      setTerminalLines(prev => [...prev, ...lines]);
+      setCodeRunState(passed ? 'success' : 'idle');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Network error.';
+      setTerminalLines(prev => [...prev, { text: `✗ ${message}`, color: '#f87171' }]);
+      setCodeRunState('idle');
+    }
   }, [codeRunState]);
 
   const handleSubmit = useCallback(() => { setShowSummit(true); }, []);
