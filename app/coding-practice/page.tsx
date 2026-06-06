@@ -17,7 +17,7 @@ import {
   setActiveProblemNumber,
   type GameQuestionStep,
 } from '@/stores/codingPractice/activeStepSlice';
-import { useGetDsaQuestionsQuery } from '@/stores/api';
+import { useGetDsaQuestionsQuery, useRunCodeMutation } from '@/stores/api';
 
 type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
 
@@ -137,6 +137,10 @@ const getMonacoLanguage = (language: SupportedLanguage) =>
 
 const getEditorFileName = (language: SupportedLanguage) =>
   ({ js: 'solution.js', python: 'solution.py', java: 'Main.java', cpp: 'solution.cpp' }[language]);
+
+// Map our local language codes to the names the nodeServer / Piston expects.
+const toBackendLanguage = (language: SupportedLanguage): string =>
+  ({ js: 'javascript', python: 'python', java: 'java', cpp: 'cpp' }[language]);
 
 const toTitleCase = (value: string | null | undefined) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
@@ -2242,6 +2246,7 @@ function CodingPracticeContent() {
   const [isRecording, setIsRecording] = useState(false);
   const [codeRunState, setCodeRunState] = useState<'idle' | 'running' | 'success'>('idle');
   const [terminalLines, setTerminalLines] = useState<typeof TERMINAL_LINES>([]);
+  const [runCodeRequest] = useRunCodeMutation();
   const [showSummit, setShowSummit] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState(INITIAL_CHAT);
@@ -2260,64 +2265,54 @@ function CodingPracticeContent() {
     setTerminalLines([{ text: `> Running ${payload.language}…`, color: '#94a3b8' }]);
 
     try {
-      const response = await fetch('/api/v1/run-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: payload.language, code: payload.code }),
-      });
-
-      const data = await response.json();
+      const data = await runCodeRequest({
+        language: toBackendLanguage(payload.language),
+        code: payload.code,
+      }).unwrap();
 
       const lines: { text: string; color: string }[] = [];
 
-      if (!response.ok) {
-        lines.push({ text: `✗ ${data?.error ?? 'Failed to run code.'}`, color: '#f87171' });
-        setTerminalLines(prev => [...prev, ...lines]);
-        setCodeRunState('idle');
-        return;
-      }
-
-      const compileStderr: string = data?.compile?.stderr ?? '';
-      const runStdout: string = data?.run?.stdout ?? '';
-      const runStderr: string = data?.run?.stderr ?? '';
-      const exitCode: number | null = data?.run?.code ?? null;
-
-      if (compileStderr.trim()) {
+      if (data.status === 'compile_error') {
         lines.push({ text: '── Compile errors ──', color: '#334155' });
-        compileStderr.split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
-      }
-
-      if (runStdout.trim()) {
-        lines.push({ text: '── Output ──', color: '#334155' });
-        runStdout.split('\n').forEach(l => lines.push({ text: l, color: '#e2e8f0' }));
-      }
-
-      if (runStderr.trim()) {
+        (data.error ?? '').split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
+      } else if (data.status === 'error') {
+        if (data.output?.trim()) {
+          lines.push({ text: '── Output ──', color: '#334155' });
+          data.output.split('\n').forEach(l => lines.push({ text: l, color: '#e2e8f0' }));
+        }
         lines.push({ text: '── Stderr ──', color: '#334155' });
-        runStderr.split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
-      }
-
-      if (lines.length === 0) {
-        lines.push({ text: '(no output)', color: '#64748b' });
+        (data.error ?? '').split('\n').forEach(l => l && lines.push({ text: l, color: '#f87171' }));
+      } else {
+        if (data.output?.trim()) {
+          lines.push({ text: '── Output ──', color: '#334155' });
+          data.output.split('\n').forEach(l => lines.push({ text: l, color: '#e2e8f0' }));
+        } else {
+          lines.push({ text: '(no output)', color: '#64748b' });
+        }
       }
 
       lines.push({ text: '──────────────────────────────────', color: '#334155' });
-      const passed = exitCode === 0 && !runStderr.trim() && !compileStderr.trim();
       lines.push({
-        text: passed
-          ? `✓ Process exited with code ${exitCode ?? 0}`
-          : `✗ Process exited with code ${exitCode ?? 'unknown'}`,
+        text: `time: ${data.time}  ·  memory: ${data.memory}  ·  cpu: ${data.cpu_usage}`,
+        color: '#64748b',
+      });
+
+      const passed = data.status === 'success';
+      lines.push({
+        text: passed ? `✓ Process exited successfully` : `✗ Execution failed (${data.status})`,
         color: passed ? '#00e676' : '#f87171',
       });
 
       setTerminalLines(prev => [...prev, ...lines]);
       setCodeRunState(passed ? 'success' : 'idle');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Network error.';
+      const message =
+        (error as { data?: { error?: string } })?.data?.error ??
+        (error instanceof Error ? error.message : 'Network error.');
       setTerminalLines(prev => [...prev, { text: `✗ ${message}`, color: '#f87171' }]);
       setCodeRunState('idle');
     }
-  }, [codeRunState]);
+  }, [codeRunState, runCodeRequest]);
 
   const handleSubmit = useCallback(() => { setShowSummit(true); }, []);
 
