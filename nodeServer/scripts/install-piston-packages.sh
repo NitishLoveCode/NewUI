@@ -9,15 +9,8 @@ HOST="${1:-http://localhost:2000}"
 
 PACKAGES="
 python=3.10.0
-node=18.15.0
 javascript=18.15.0
-typescript=5.0.3
-c=10.2.0
-cpp=10.2.0
 java=15.0.2
-go=1.16.2
-rust=1.68.2
-ruby=3.0.1
 "
 
 echo "Waiting for Piston at ${HOST}..."
