@@ -182,7 +182,8 @@ This will:
 
 ```bash
 # Check container status
-docker compose ps
+docker compose up -d --build
+docker compose up -d backend
 ```
 
 Expected output:
@@ -305,7 +306,7 @@ From your local machine:
 curl http://<YOUR_EC2_PUBLIC_IP>:3000/health
 
 # Test code execution
-curl -X POST http://<YOUR_EC2_PUBLIC_IP>:3000/api/run-code \
+curl -X POST http://13.203.206.210:3000/api/run-code \
   -H "Content-Type: application/json" \
   -d '{"language":"python","code":"print(\"Remote test successful!\")"}'
 ```
