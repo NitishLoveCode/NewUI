@@ -6,6 +6,9 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
+    console.log('[Socket] Initializing Socket.IO client...');
+    console.log('[Socket] Target URL:', SOCKET_URL);
+
     socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -13,12 +16,30 @@ export const getSocket = (): Socket => {
       reconnectionAttempts: 5,
       transports: ['websocket', 'polling'],
     });
+
+    socket.on('connect', () => {
+      console.log('[Socket] ✓ Connected successfully');
+      console.log('[Socket] Socket ID:', socket?.id);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] ✗ Disconnected. Reason:', reason);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[Socket] ✗ Connection error:', error);
+    });
+
+    socket.on('error', (error) => {
+      console.error('[Socket] ✗ Socket error:', error);
+    });
   }
   return socket;
 };
 
 export const disconnectSocket = () => {
   if (socket) {
+    console.log('[Socket] Disconnecting...');
     socket.disconnect();
     socket = null;
   }

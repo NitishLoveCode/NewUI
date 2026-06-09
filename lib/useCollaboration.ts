@@ -45,42 +45,53 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
     const socket = socketRef.current;
     if (!socket) return;
 
+    console.log('[Collaboration] Socket connected, joining room:', options.roomId);
+
     // Emit join-room
     socket.emit('join-room', {
       roomId: options.roomId,
       userId: options.userId,
       username: options.username,
     }, (response: { ok: boolean; users: any[] }) => {
+      console.log('[Collaboration] join-room response:', response);
       if (response.ok) {
         setConnected(true);
         setUsers(response.users || []);
+        console.log('[Collaboration] ✓ Successfully joined room with', (response.users || []).length, 'users');
+      } else {
+        console.error('[Collaboration] ✗ Failed to join room');
       }
     });
 
     // Setup event listeners
     socket.on('connected', ({ socketId }: { socketId: string }) => {
-      console.log('Connected with socketId:', socketId);
+      console.log('[Collaboration] connected event received, socketId:', socketId);
     });
 
     socket.on('user-joined', (data: any) => {
+      console.log('[Collaboration] user-joined:', data);
       setUsers(data.users || []);
       options.onUserJoined?.(data);
     });
 
     socket.on('user-left', (data: any) => {
+      console.log('[Collaboration] user-left:', data);
       setUsers(data.users || []);
       options.onUserLeft?.(data);
     });
 
     socket.on('code-change', (data: any) => {
+      console.log('[Collaboration] code-change received');
       options.onCodeChange?.(data);
     });
 
     socket.on('cursor-change', (data: any) => {
+      console.log('[Collaboration] cursor-change received');
       options.onCursorChange?.(data);
     });
 
     socket.on('chat-message', (data: any) => {
+      console.log('[Collaboration] chat-message received:', data.message);
       options.onChatMessage?.(data);
     });
 
