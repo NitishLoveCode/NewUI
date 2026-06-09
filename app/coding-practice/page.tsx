@@ -1851,7 +1851,7 @@ function VideoCallBar({
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean; elapsed: number;
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
-  localVideoRef: React.RefObject<HTMLVideoElement>; remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
   const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement> }) => (
     <div
@@ -2052,7 +2052,7 @@ function CollaborationArena({
   onMute: () => void; onCamera: () => void; onRecording: () => void;
   onRunCode: (payload: { code: string; language: SupportedLanguage }) => void; onSubmit: () => void; onSendChat: () => void;
   onChatInput: (v: string) => void; onDisconnect: () => void; currentStep: number;
-  localVideoRef: React.RefObject<HTMLVideoElement>; remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
