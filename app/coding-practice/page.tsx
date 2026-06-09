@@ -1853,7 +1853,7 @@ function VideoCallBar({
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
   localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
-  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement> }) => (
+  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement | null> }) => (
     <div
       className="relative rounded-xl overflow-hidden flex items-center justify-center flex-1"
       style={{

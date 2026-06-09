@@ -120,8 +120,9 @@ export default function CollabPlaygroundExample({ roomId, username = "Anon" }: P
         />
 
         <div className="rounded border bg-zinc-900 p-3 font-mono text-sm text-zinc-100">
+
           {runError && (
-            <pre className="text-red-400">{JSON.stringify(runError, null, 2)}</pre>
+            <pre className="text-red-400">{typeof runError === 'string' ? runError : JSON.stringify(runError, null, 2)}</pre>
           )}
           {runResult && (
             <>
