@@ -18,6 +18,7 @@ import {
   type GameQuestionStep,
 } from '@/stores/codingPractice/activeStepSlice';
 import { useGetDsaQuestionsQuery, useRunCodeMutation } from '@/stores/api';
+import { useCollaboration } from '@/lib/useCollaboration';
 
 type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
 
@@ -1846,22 +1847,40 @@ function ChatDrawer({
 
 function VideoCallBar({
   isAnonymous, isMuted, isCameraOff, isRecording, elapsed, onMute, onCamera, onRecording, onDisconnect,
+  localVideoRef, remoteVideoRef,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean; elapsed: number;
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
+  localVideoRef: React.RefObject<HTMLVideoElement>; remoteVideoRef: React.RefObject<HTMLVideoElement>;
 }) {
-  const VideoBox = ({ isYou, color }: { isYou: boolean; color: string }) => (
+  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement> }) => (
     <div
       className="relative rounded-xl overflow-hidden flex items-center justify-center flex-1"
       style={{
         height: 112,
-        background: isCameraOff
+        background: isCameraOff && isYou
           ? 'rgba(0,0,0,0.55)'
           : `linear-gradient(135deg, ${color}22, rgba(0,0,0,0.75))`,
         border: `1px solid ${color}40`,
       }}
     >
-      <div className="text-4xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
+      {videoRef ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isYou}
+          className="w-full h-full object-cover"
+          style={{ display: isCameraOff && isYou ? 'none' : 'block' }}
+        />
+      ) : null}
+      {(isCameraOff && isYou) || !videoRef ? (
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-3xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
+          {isCameraOff && isYou && <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>}
+          {!videoRef && !isYou && <div className="text-[10px] text-gray-400">Waiting...</div>}
+        </div>
+      ) : null}
       <div
         className="absolute bottom-0 left-0 right-0 px-2 py-1 text-center text-xs font-semibold"
         style={{ background: 'rgba(0,0,0,0.75)', color }}
@@ -1895,8 +1914,8 @@ function VideoCallBar({
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-1.5 w-full">
       <div className="flex gap-1.5 w-full">
-        <VideoBox isYou color="#7c3aed" />
-        <VideoBox isYou={false} color="#22d3ee" />
+        <VideoBox isYou color="#7c3aed" videoRef={localVideoRef} />
+        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} />
       </div>
 
       <div className="flex items-center gap-1 w-full">
@@ -2025,6 +2044,7 @@ function CodeSummitAnimation({ onClose }: { onClose: () => void }) {
 function CollaborationArena({
   isAnonymous, isMuted, isCameraOff, isRecording, codeRunState, terminalLines, chatMessages, chatInput,
   onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, currentStep,
+  localVideoRef, remoteVideoRef,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean;
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
@@ -2032,6 +2052,7 @@ function CollaborationArena({
   onMute: () => void; onCamera: () => void; onRecording: () => void;
   onRunCode: (payload: { code: string; language: SupportedLanguage }) => void; onSubmit: () => void; onSendChat: () => void;
   onChatInput: (v: string) => void; onDisconnect: () => void; currentStep: number;
+  localVideoRef: React.RefObject<HTMLVideoElement>; remoteVideoRef: React.RefObject<HTMLVideoElement>;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
@@ -2078,6 +2099,8 @@ function CollaborationArena({
           onCamera={onCamera}
           onRecording={onRecording}
           onDisconnect={onDisconnect}
+          localVideoRef={localVideoRef}
+          remoteVideoRef={remoteVideoRef}
         />
 
         <div className="flex gap-2 w-full relative">
@@ -2239,7 +2262,7 @@ function CodingPracticeContent() {
   }, [dispatch, activeProblemNumber]);
 
   const currentStep = activeProblemNumber ?? 0;
-  const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('connected');
+  const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('idle');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -2253,11 +2276,58 @@ function CodingPracticeContent() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Video refs
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Collaboration hook
+  const roomId = `problem-${currentStep}`;
+  const collaboration = useCollaboration({
+    roomId,
+    userId: isAnonymous ? undefined : 'user-1',
+    username: isAnonymous ? 'Anonymous' : 'You',
+    onChatMessage: (data) => {
+      const now = new Date();
+      const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      setChatMessages(prev => [...prev, {
+        id: Date.now(),
+        user: data.username || 'User',
+        avatar: '🧑‍💻',
+        msg: data.message,
+        time,
+        me: false,
+        color: '#22d3ee'
+      }]);
+    },
+    onRemoteStream: (stream) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+      }
+    },
+    onConnectionError: (error) => {
+      console.error('Collaboration error:', error);
+    },
+  });
+
   const handleConnect = useCallback((anon: boolean) => {
     setIsAnonymous(anon);
     setConnectionState('searching');
-    searchTimer.current = setTimeout(() => setConnectionState('connected'), 3000);
-  }, []);
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const stream = await collaboration.getLocalStream();
+        if (stream && localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+        await collaboration.initializeWebRTC();
+        setConnectionState('connected');
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        // Still allow connection even if media fails
+        await collaboration.initializeWebRTC();
+        setConnectionState('connected');
+      }
+    }, 1000);
+  }, [collaboration]);
 
   const handleRunCode = useCallback(async (payload: { code: string; language: SupportedLanguage }) => {
     if (codeRunState === 'running') return;
@@ -2321,15 +2391,18 @@ function CodingPracticeContent() {
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     setChatMessages(prev => [...prev, { id: Date.now(), user: 'You', avatar: '👨‍💻', msg: chatInput.trim(), time, me: true, color: '#00e676' }]);
+    collaboration.sendChatMessage(chatInput.trim());
     setChatInput('');
-  }, [chatInput]);
+  }, [chatInput, collaboration]);
 
   const handleDisconnect = useCallback(() => {
     setConnectionState('idle');
     setTerminalLines([]);
     setCodeRunState('idle');
     if (runInterval.current) clearInterval(runInterval.current);
-  }, []);
+    collaboration.endCall();
+    collaboration.cleanup();
+  }, [collaboration]);
 
   useEffect(() => {
     return () => {
@@ -2395,6 +2468,8 @@ function CodingPracticeContent() {
                 onSendChat={handleSendChat}
                 onChatInput={setChatInput}
                 onDisconnect={handleDisconnect}
+                localVideoRef={localVideoRef}
+                remoteVideoRef={remoteVideoRef}
               />
             </motion.div>
           )}

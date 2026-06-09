@@ -1,0 +1,250 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Socket } from 'socket.io-client';
+import { getSocket, disconnectSocket } from './socket';
+import { WebRTCHandler } from './webrtc';
+
+export interface UseCollaborationOptions {
+  roomId: string;
+  userId?: string;
+  username?: string;
+  onCodeChange?: (data: any) => void;
+  onCursorChange?: (data: any) => void;
+  onChatMessage?: (data: any) => void;
+  onUserJoined?: (data: any) => void;
+  onUserLeft?: (data: any) => void;
+  onRemoteStream?: (stream: MediaStream) => void;
+  onConnectionError?: (error: string) => void;
+}
+
+export const useCollaboration = (options: UseCollaborationOptions) => {
+  const socketRef = useRef<Socket | null>(null);
+  const webrtcRef = useRef<WebRTCHandler | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const socket = getSocket();
+    socketRef.current = socket;
+
+    if (socket.connected) {
+      handleSocketConnected();
+    } else {
+      socket.on('connect', handleSocketConnected);
+    }
+
+    return () => {
+      // Keep socket alive for other instances
+    };
+  }, []);
+
+  const handleSocketConnected = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Emit join-room
+    socket.emit('join-room', {
+      roomId: options.roomId,
+      userId: options.userId,
+      username: options.username,
+    }, (response: { ok: boolean; users: any[] }) => {
+      if (response.ok) {
+        setConnected(true);
+        setUsers(response.users || []);
+      }
+    });
+
+    // Setup event listeners
+    socket.on('connected', ({ socketId }: { socketId: string }) => {
+      console.log('Connected with socketId:', socketId);
+    });
+
+    socket.on('user-joined', (data: any) => {
+      setUsers(data.users || []);
+      options.onUserJoined?.(data);
+    });
+
+    socket.on('user-left', (data: any) => {
+      setUsers(data.users || []);
+      options.onUserLeft?.(data);
+    });
+
+    socket.on('code-change', (data: any) => {
+      options.onCodeChange?.(data);
+    });
+
+    socket.on('cursor-change', (data: any) => {
+      options.onCursorChange?.(data);
+    });
+
+    socket.on('chat-message', (data: any) => {
+      options.onChatMessage?.(data);
+    });
+
+    return () => {
+      socket.off('connected');
+      socket.off('user-joined');
+      socket.off('user-left');
+      socket.off('code-change');
+      socket.off('cursor-change');
+      socket.off('chat-message');
+    };
+  }, [options.roomId, options.userId, options.username]);
+
+  // Get local media stream (optional - proceed without if not available)
+  const getLocalStream = useCallback(async (): Promise<MediaStream | null> => {
+    try {
+      if (localStreamRef.current) {
+        return localStreamRef.current;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+
+      localStreamRef.current = stream;
+      return stream;
+    } catch (err) {
+      // If no device, try audio only
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStreamRef.current = audioStream;
+        return audioStream;
+      } catch {
+        // No audio either - allow proceeding without media
+        console.warn('No media devices available, proceeding without audio/video');
+        return null;
+      }
+    }
+  }, []);
+
+  // Initialize WebRTC
+  const initializeWebRTC = useCallback(async (targetPeer?: string) => {
+    try {
+      const socket = socketRef.current;
+      if (!socket) {
+        throw new Error('Socket not available');
+      }
+
+      if (!webrtcRef.current) {
+        webrtcRef.current = new WebRTCHandler(socket, {
+          onRemoteStream: (stream) => {
+            setRemoteStream(stream);
+            options.onRemoteStream?.(stream);
+          },
+          onError: (err) => {
+            setError(err);
+            options.onConnectionError?.(err);
+          },
+        });
+
+        if (localStreamRef.current) {
+          await webrtcRef.current.initialize(localStreamRef.current);
+        } else {
+          // Initialize without local stream
+          console.warn('No local stream, WebRTC will be audio-only or peer-broadcast only');
+        }
+      }
+
+      if (targetPeer) {
+        await webrtcRef.current.createOffer(targetPeer, options.roomId);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to initialize WebRTC';
+      setError(message);
+      console.error('Error initializing WebRTC:', err);
+    }
+  }, [options.roomId]);
+
+  // Send code changes
+  const sendCodeChange = useCallback((code: string, language?: string, cursor?: any) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit('code-change', {
+      roomId: options.roomId,
+      code,
+      language,
+      cursor,
+    });
+  }, [options.roomId]);
+
+  // Send cursor position
+  const sendCursorChange = useCallback((cursor: any, selection?: any) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit('cursor-change', {
+      roomId: options.roomId,
+      cursor,
+      selection,
+    });
+  }, [options.roomId]);
+
+  // Send chat message
+  const sendChatMessage = useCallback((message: string) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit('chat-message', {
+      roomId: options.roomId,
+      message,
+    });
+  }, [options.roomId]);
+
+  // End call
+  const endCall = useCallback((targetPeer?: string) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    if (targetPeer) {
+      socket.emit('call-end', { target: targetPeer });
+    }
+
+    webrtcRef.current?.closeConnection();
+    webrtcRef.current = null;
+  }, []);
+
+  // Cleanup
+  const cleanup = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+
+    webrtcRef.current?.closeConnection();
+
+    const socket = socketRef.current;
+    if (socket) {
+      socket.emit('leave-room', { roomId: options.roomId });
+    }
+  }, [options.roomId]);
+
+  // Leave room on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
+  return {
+    connected,
+    remoteStream,
+    users,
+    error,
+    getLocalStream,
+    initializeWebRTC,
+    sendCodeChange,
+    sendCursorChange,
+    sendChatMessage,
+    endCall,
+    cleanup,
+  };
+};
