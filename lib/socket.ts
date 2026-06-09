@@ -1,6 +1,6 @@
 import io, { Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://new-ui-jade.vercel.app';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 
 let socket: Socket | null = null;
 
@@ -15,6 +15,7 @@ export const getSocket = (): Socket => {
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
       transports: ['websocket', 'polling'],
+      rejectUnauthorized: process.env.NODE_ENV === 'production' ? true : false,
     });
 
     socket.on('connect', () => {
