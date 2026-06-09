@@ -19,6 +19,14 @@ interface Props {
   username?: string;
 }
 
+type RunCodeResponse = {
+  status: string;
+  time: string;
+  memory: string;
+  error?: string;
+  output?: string;
+};
+
 export default function CollabPlaygroundExample({ roomId, username = "Anon" }: Props) {
   const [code, setCode] = useState<string>('print("Hello from collab")');
   const [language, setLanguage] = useState<string>("python");
@@ -109,6 +117,7 @@ export default function CollabPlaygroundExample({ roomId, username = "Anon" }: P
             ws: {isConnected ? "connected" : "disconnected"} · room:{" "}
             {isJoined ? "joined" : "—"} · users: {users.length}
           </span>
+
         </div>
 
         <textarea
@@ -121,7 +130,7 @@ export default function CollabPlaygroundExample({ roomId, username = "Anon" }: P
 
         <div className="rounded border bg-zinc-900 p-3 font-mono text-sm text-zinc-100">
 
-          {runError && (
+          {Boolean(runError) && (
             <pre className="text-red-400">{typeof runError === 'string' ? runError : JSON.stringify(runError, null, 2)}</pre>
           )}
           {runResult && (
