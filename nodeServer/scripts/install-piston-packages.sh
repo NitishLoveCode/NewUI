@@ -9,7 +9,7 @@ HOST="${1:-http://localhost:2000}"
 
 PACKAGES="
 python=3.10.0
-javascript=18.15.0
+javascript=20.5.1
 java=15.0.2
 "
 
