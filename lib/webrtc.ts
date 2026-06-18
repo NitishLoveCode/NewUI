@@ -98,6 +98,7 @@ export class WebRTCHandler {
         
         // If still undefined, try to determine from room users (should be the other user in a 2-person room)
         if (!fromPeer && this.ourSocketId && this.roomUsers.length === 2) {
+          //@ts-ignore
           fromPeer = this.roomUsers.find(id => id !== this.ourSocketId) || null;
           console.log('[WebRTC] Determined peer from room users:', fromPeer);
         }
