@@ -1858,7 +1858,7 @@ function VideoCallBar({
     useEffect(() => {
       console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} VideoBox mounted, ref exists:`, !!videoRef?.current, 'isCameraOff:', isCameraOff);
       if (videoRef?.current) {
-        console.log(`[VideoBox] Video element details - paused:`, videoRef.current.paused, 'readyState:', videoRef.current.readyState, 'srcObject:`, !!videoRef.current.srcObject);
+        // console.log(`[VideoBox] Video element details - paused:`, videoRef.current.paused, 'readyState:', videoRef.current.readyState, 'srcObject:`, !!videoRef.current.srcObject);
       }
     }, [isYou, videoRef]);
 
@@ -1907,7 +1907,7 @@ function VideoCallBar({
           {isCameraOff && isYou && <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>}
           {!videoRef && !isYou && <div className="text-[10px] text-gray-400">Waiting...</div>}
         </div>
-      ) : null}
+      )}
       <div
         className="absolute bottom-0 left-0 right-0 px-2 py-1 text-center text-xs font-semibold"
         style={{ background: 'rgba(0,0,0,0.75)', color }}
