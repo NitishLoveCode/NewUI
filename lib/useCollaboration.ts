@@ -109,9 +109,11 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
   const getLocalStream = useCallback(async (): Promise<MediaStream | null> => {
     try {
       if (localStreamRef.current) {
+        console.log('[Collaboration] Returning existing local stream with', localStreamRef.current.getTracks().length, 'tracks');
         return localStreamRef.current;
       }
 
+      console.log('[Collaboration] Requesting user media (video + audio)...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: {
@@ -120,17 +122,20 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
         },
       });
 
+      console.log('[Collaboration] ✓ Got local stream:', stream.getTracks().map(t => `${t.kind}:${t.label}`));
       localStreamRef.current = stream;
       return stream;
     } catch (err) {
+      console.warn('[Collaboration] Video failed, trying audio only:', err);
       // If no device, try audio only
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[Collaboration] ✓ Got audio-only stream');
         localStreamRef.current = audioStream;
         return audioStream;
       } catch {
         // No audio either - allow proceeding without media
-        console.warn('No media devices available, proceeding without audio/video');
+        console.warn('[Collaboration] ✗ No media devices available, proceeding without audio/video');
         return null;
       }
     }
@@ -139,38 +144,45 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
   // Initialize WebRTC
   const initializeWebRTC = useCallback(async (targetPeer?: string) => {
     try {
+      console.log('[Collaboration] Initializing WebRTC, targetPeer:', targetPeer);
       const socket = socketRef.current;
       if (!socket) {
         throw new Error('Socket not available');
       }
 
       if (!webrtcRef.current) {
+        console.log('[Collaboration] Creating WebRTCHandler...');
         webrtcRef.current = new WebRTCHandler(socket, {
           onRemoteStream: (stream) => {
+            console.log('[Collaboration] ✓ Received remote stream with', stream.getTracks().length, 'tracks');
             setRemoteStream(stream);
             options.onRemoteStream?.(stream);
           },
           onError: (err) => {
+            console.error('[Collaboration] WebRTC error:', err);
             setError(err);
             options.onConnectionError?.(err);
           },
         });
 
         if (localStreamRef.current) {
+          console.log('[Collaboration] Initializing WebRTC with local stream');
           await webrtcRef.current.initialize(localStreamRef.current);
         } else {
           // Initialize without local stream
-          console.warn('No local stream, WebRTC will be audio-only or peer-broadcast only');
+          console.warn('[Collaboration] No local stream, WebRTC will be audio-only or peer-broadcast only');
+          await webrtcRef.current.initialize();
         }
       }
 
       if (targetPeer) {
+        console.log('[Collaboration] Creating offer for peer:', targetPeer);
         await webrtcRef.current.createOffer(targetPeer, options.roomId);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize WebRTC';
       setError(message);
-      console.error('Error initializing WebRTC:', err);
+      console.error('[Collaboration] Error initializing WebRTC:', err);
     }
   }, [options.roomId]);
 

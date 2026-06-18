@@ -2300,8 +2300,10 @@ function CodingPracticeContent() {
       }]);
     },
     onRemoteStream: (stream) => {
-      if (remoteVideoRef.current) {
+      console.log('[CodingPractice] Received remote stream, setting video srcObject');
+      if (remoteVideoRef.current && stream) {
         remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play().catch(e => console.error('[CodingPractice] Remote video play error:', e));
       }
     },
     onConnectionError: (error) => {
@@ -2314,20 +2316,68 @@ function CodingPracticeContent() {
     setConnectionState('searching');
     searchTimer.current = setTimeout(async () => {
       try {
+        console.log('[CodingPractice] Getting local stream...');
         const stream = await collaboration.getLocalStream();
         if (stream && localVideoRef.current) {
+          console.log('[CodingPractice] Setting local video srcObject, tracks:', stream.getTracks().length);
           localVideoRef.current.srcObject = stream;
+          // Ensure video plays
+          localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
+        } else {
+          console.warn('[CodingPractice] No stream or video ref available');
         }
+        console.log('[CodingPractice] Initializing WebRTC...');
         await collaboration.initializeWebRTC();
         setConnectionState('connected');
+        console.log('[CodingPractice] ✓ Connected successfully');
       } catch (error) {
-        console.error('Failed to initialize:', error);
+        console.error('[CodingPractice] Failed to initialize:', error);
         // Still allow connection even if media fails
         await collaboration.initializeWebRTC();
         setConnectionState('connected');
       }
     }, 1000);
   }, [collaboration]);
+
+  const handleCameraToggle = useCallback(() => {
+    setIsCameraOff(prev => {
+      const newState = !prev;
+      console.log('[CodingPractice] Toggling camera:', newState ? 'OFF' : 'ON');
+      
+      // Enable/disable video track in the stream
+      if (localVideoRef.current && localVideoRef.current.srcObject) {
+        const stream = localVideoRef.current.srcObject as MediaStream;
+        const videoTracks = stream.getVideoTracks();
+        console.log('[CodingPractice] Found', videoTracks.length, 'video tracks');
+        videoTracks.forEach(track => {
+          track.enabled = !newState;
+          console.log('[CodingPractice] Video track enabled:', track.enabled);
+        });
+      }
+      
+      return newState;
+    });
+  }, []);
+
+  const handleMuteToggle = useCallback(() => {
+    setIsMuted(prev => {
+      const newState = !prev;
+      console.log('[CodingPractice] Toggling audio:', newState ? 'MUTED' : 'UNMUTED');
+      
+      // Enable/disable audio track in the stream
+      if (localVideoRef.current && localVideoRef.current.srcObject) {
+        const stream = localVideoRef.current.srcObject as MediaStream;
+        const audioTracks = stream.getAudioTracks();
+        console.log('[CodingPractice] Found', audioTracks.length, 'audio tracks');
+        audioTracks.forEach(track => {
+          track.enabled = !newState;
+          console.log('[CodingPractice] Audio track enabled:', track.enabled);
+        });
+      }
+      
+      return newState;
+    });
+  }, []);
 
   const handleRunCode = useCallback(async (payload: { code: string; language: SupportedLanguage }) => {
     if (codeRunState === 'running') return;
@@ -2460,8 +2510,8 @@ function CodingPracticeContent() {
                 chatMessages={chatMessages}
                 chatInput={chatInput}
                 currentStep={currentStep}
-                onMute={() => setIsMuted(m => !m)}
-                onCamera={() => setIsCameraOff(c => !c)}
+                onMute={handleMuteToggle}
+                onCamera={handleCameraToggle}
                 onRecording={() => setIsRecording(r => !r)}
                 onRunCode={handleRunCode}
                 onSubmit={handleSubmit}
