@@ -2381,6 +2381,55 @@ function CodingPracticeContent() {
     },
   });
 
+  // Get users from collaboration hook
+  const { users } = collaboration;
+  const webrtcInitiatedRef = useRef(false);
+
+  // Initiate WebRTC connection when another user joins
+  useEffect(() => {
+    if (connectionState !== 'connected' || !localStream || webrtcInitiatedRef.current) {
+      return;
+    }
+
+    console.log('[CodingPractice] Checking for peers. Users in room:', users.length);
+
+    // When we have exactly 2 users, initiate WebRTC with the other peer
+    // We'll compare socket IDs - the one with the lexically smaller ID initiates
+    if (users.length === 2) {
+      // Sort users by socketId to determine who initiates
+      const sortedUsers = [...users].sort((a, b) => a.socketId.localeCompare(b.socketId));
+      const firstUser = sortedUsers[0];
+      const secondUser = sortedUsers[1];
+
+      console.log('[CodingPractice] Two users detected. First:', firstUser.socketId, 'Second:', secondUser.socketId);
+
+      // We need to determine which user we are
+      // If we're the first user (lexically smaller socketId), we initiate
+      // We can check by seeing which user has our userId
+      const ourUser = users.find((u: any) => u.userId === (isAnonymous ? undefined : 'user-1'));
+      
+      if (ourUser && ourUser.socketId === firstUser.socketId) {
+        // We're the first user, so we initiate the call to the second user
+        const targetPeer = secondUser.socketId;
+        console.log('[CodingPractice] We are first user, initiating WebRTC with peer:', targetPeer);
+        webrtcInitiatedRef.current = true;
+        collaboration.initializeWebRTC(targetPeer).catch(err => {
+          console.error('[CodingPractice] Failed to initiate WebRTC with peer:', err);
+          webrtcInitiatedRef.current = false;
+        });
+      } else {
+        // We're the second user, we wait for the first user to send an offer
+        console.log('[CodingPractice] We are second user, waiting for offer from peer');
+        // Still initialize WebRTC handler without creating an offer
+        webrtcInitiatedRef.current = true;
+        collaboration.initializeWebRTC().catch(err => {
+          console.error('[CodingPractice] Failed to initialize WebRTC:', err);
+          webrtcInitiatedRef.current = false;
+        });
+      }
+    }
+  }, [users, connectionState, localStream, collaboration, isAnonymous]);
+
   const handleConnect = useCallback((anon: boolean) => {
     setIsAnonymous(anon);
     setConnectionState('searching');
@@ -2394,14 +2443,12 @@ function CodingPracticeContent() {
         } else {
           console.warn('[CodingPractice] No stream obtained from collaboration.getLocalStream()');
         }
-        console.log('[CodingPractice] Initializing WebRTC...');
-        await collaboration.initializeWebRTC();
+        // Don't initialize WebRTC here - let the useEffect handle it when users are available
+        console.log('[CodingPractice] Waiting for WebRTC initialization...');
         setConnectionState('connected');
         console.log('[CodingPractice] ✓ Connected successfully, waiting for video element to mount...');
       } catch (error) {
         console.error('[CodingPractice] Failed to initialize:', error);
-        // Still allow connection even if media fails
-        await collaboration.initializeWebRTC();
         setConnectionState('connected');
       }
     }, 1000);
