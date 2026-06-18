@@ -18,6 +18,7 @@ export class WebRTCHandler {
   roomId: string = 'default-room';
   ourSocketId: string | null = null;
   roomUsers: string[] = [];
+  pendingIceCandidates: RTCIceCandidateInit[] = [];
 
   constructor(socket: Socket, config: WebRTCConfig = {}, ourSocketId?: string, roomUsers?: string[]) {
     this.socket = socket;
@@ -119,6 +120,9 @@ export class WebRTCHandler {
         console.log('[WebRTC] Setting remote description (offer)');
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
         
+        // Process any ICE candidates that arrived before remote description was set
+        await this.processPendingIceCandidates();
+        
         console.log('[WebRTC] Creating answer');
         const answer = await this.peerConnection.createAnswer();
         
@@ -150,6 +154,10 @@ export class WebRTCHandler {
         
         console.log('[WebRTC] Setting remote description (answer)');
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+        
+        // Process any ICE candidates that arrived before remote description was set
+        await this.processPendingIceCandidates();
+        
         console.log('[WebRTC] ✓ Answer processed successfully');
       } catch (error) {
         const errorMsg = `Error handling answer: ${error}`;
@@ -163,9 +171,26 @@ export class WebRTCHandler {
         if (data.candidate) {
           const fromPeer = data.from || data.target;
           console.log('[WebRTC] Received ICE candidate from', fromPeer);
-          await this.peerConnection!.addIceCandidate(new RTCIceCandidate(data.candidate));
+          
+          // Check if peer connection is ready
+          if (!this.peerConnection) {
+            console.warn('[WebRTC] Peer connection not ready yet, queueing ICE candidate');
+            this.pendingIceCandidates.push(data.candidate);
+            return;
+          }
+          
+          // Check if remote description is set before adding ICE candidate
+          if (!this.peerConnection.remoteDescription) {
+            console.warn('[WebRTC] Remote description not set yet, queueing ICE candidate');
+            this.pendingIceCandidates.push(data.candidate);
+            return;
+          }
+          
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+          console.log('[WebRTC] ✓ ICE candidate added successfully');
         }
       } catch (error) {
+        console.error('[WebRTC] Error adding ICE candidate:', error);
         this.config.onError?.(`Error adding ICE candidate: ${error}`);
       }
     });
@@ -177,6 +202,25 @@ export class WebRTCHandler {
     this.dataChannel.onopen = () => console.log('Data channel opened');
     this.dataChannel.onclose = () => console.log('Data channel closed');
     this.dataChannel.onerror = (error) => this.config.onError?.(`Data channel error: ${error}`);
+  }
+
+  private async processPendingIceCandidates() {
+    if (this.pendingIceCandidates.length === 0) return;
+    
+    console.log('[WebRTC] Processing', this.pendingIceCandidates.length, 'queued ICE candidates');
+    const candidates = [...this.pendingIceCandidates];
+    this.pendingIceCandidates = [];
+    
+    for (const candidate of candidates) {
+      try {
+        if (this.peerConnection && this.peerConnection.remoteDescription) {
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('[WebRTC] ✓ Queued ICE candidate added');
+        }
+      } catch (error) {
+        console.error('[WebRTC] Error adding queued ICE candidate:', error);
+      }
+    }
   }
 
   async createOffer(targetPeer: string, roomId: string) {
@@ -234,6 +278,7 @@ export class WebRTCHandler {
     this.remoteStream = null;
     this.localStream = null;
     this.targetPeer = null;
+    this.pendingIceCandidates = [];
   }
 
   getRemoteStream(): MediaStream | null {
