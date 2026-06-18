@@ -3,7 +3,7 @@
 // safe to bundle into client code.
 
 const RAW_BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "https://new-ui-jade.vercel.app";
+  process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "https://server.ilovedsa.com";
 
 // Strip a single trailing slash so we can safely concatenate paths.
 export const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, "");

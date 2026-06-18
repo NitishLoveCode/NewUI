@@ -40,5 +40,12 @@ export function useSocket(): UseSocketResult {
     };
   }, [socket]);
 
+
+
+
+
+
+  console.log("here is initial socket data ----->", { socket, isConnected, socketId });
+
   return { socket, isConnected, socketId };
 }
