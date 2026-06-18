@@ -66,7 +66,7 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
 
     // Setup event listeners
     socket.on('connected', ({ socketId: sid }: { socketId: string }) => {
-      console.log('[Collaboration] connected event received, socketId:', sid);
+      console.log('[Collaboration] ✓ Connected event received, our socketId:', sid);
       setSocketId(sid);
     });
 

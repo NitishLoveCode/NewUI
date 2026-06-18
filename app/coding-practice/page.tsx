@@ -2387,7 +2387,21 @@ function CodingPracticeContent() {
 
   // Initiate WebRTC connection when another user joins
   useEffect(() => {
+    console.log('[CodingPractice] WebRTC init useEffect triggered:', {
+      connectionState,
+      hasLocalStream: !!localStream,
+      alreadyInitiated: webrtcInitiatedRef.current,
+      socketId,
+      usersCount: users.length
+    });
+
     if (connectionState !== 'connected' || !localStream || webrtcInitiatedRef.current || !socketId) {
+      console.log('[CodingPractice] Skipping WebRTC init due to:', {
+        notConnected: connectionState !== 'connected',
+        noLocalStream: !localStream,
+        alreadyInitiated: webrtcInitiatedRef.current,
+        noSocketId: !socketId
+      });
       return;
     }
 

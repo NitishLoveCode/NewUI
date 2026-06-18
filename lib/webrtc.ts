@@ -86,6 +86,7 @@ export class WebRTCHandler {
   }
 
   private setupSocketListeners() {
+    console.log('[WebRTC] Setting up socket listeners for offer/answer/ice-candidate events');
     this.socket.on('offer', async (data: { target: string; roomId: string; sdp: string }) => {
       try {
         console.log('[WebRTC] Received offer from', data.target, 'in room', data.roomId);
