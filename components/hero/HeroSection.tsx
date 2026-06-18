@@ -78,7 +78,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
           >
             <span className="text-sm">🎁</span>
             <span className="text-xs font-semibold" style={{ color: '#00e676' }}>
-              Daily DSA Sheets, Notes, and Practice Sets
+              Daily DSA Sheets, Notes, and Practice Sets, hello
             </span>
           </motion.div>
 
