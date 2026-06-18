@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -1843,6 +1843,92 @@ function ChatDrawer({
   );
 }
 
+// ─── Video Box Component ──────────────────────────────────────────────────────
+
+const VideoBox = React.memo(({ 
+  isYou, 
+  color, 
+  videoRef, 
+  isCameraOff, 
+  isAnonymous 
+}: { 
+  isYou: boolean; 
+  color: string; 
+  videoRef?: React.RefObject<HTMLVideoElement | null>; 
+  isCameraOff: boolean; 
+  isAnonymous: boolean; 
+}) => {
+  // Log when VideoBox renders
+  useEffect(() => {
+    console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} VideoBox mounted, ref exists:`, !!videoRef?.current, 'isCameraOff:', isCameraOff);
+  }, [isYou, videoRef?.current, isCameraOff]);
+
+  return (
+  <div
+    className="relative rounded-xl overflow-hidden flex items-center justify-center flex-1"
+    style={{
+      height: 112,
+      background: isCameraOff && isYou
+        ? 'rgba(0,0,0,0.55)'
+        : `linear-gradient(135deg, ${color}22, rgba(0,0,0,0.75))`,
+      border: `1px solid ${color}40`,
+    }}
+  >
+    {videoRef && (
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isYou}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ 
+          display: (isCameraOff && isYou) ? 'none' : 'block',
+          backgroundColor: '#000',
+          zIndex: 1
+        }}
+        onLoadedMetadata={(e) => {
+          const video = e.currentTarget;
+          const computedStyle = window.getComputedStyle(video);
+          console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video metadata loaded`);
+          console.log('  - videoWidth:', video.videoWidth, 'videoHeight:', video.videoHeight);
+          console.log('  - display:', computedStyle.display, 'visibility:', computedStyle.visibility, 'opacity:', computedStyle.opacity);
+          console.log('  - paused:', video.paused, 'readyState:', video.readyState);
+        }}
+        onPlay={() => {
+          console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video started playing`);
+        }}
+        onError={(e) => {
+          console.error(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video error:`, e);
+        }}
+      />
+    )}
+    {((isCameraOff && isYou) || !videoRef) && (
+      <div className="flex flex-col items-center gap-1" style={{ zIndex: 2, position: 'relative' }}>
+        <div className="text-3xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
+        {isCameraOff && isYou && <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>}
+        {!videoRef && !isYou && <div className="text-[10px] text-gray-400">Waiting...</div>}
+      </div>
+    )}
+    <div
+      className="absolute bottom-0 left-0 right-0 px-2 py-1 text-center text-xs font-semibold"
+      style={{ background: 'rgba(0,0,0,0.75)', color, zIndex: 3 }}
+    >
+      {isYou ? 'You' : 'Partner'}
+    </div>
+    {!isYou && (
+      <motion.div
+        className="absolute top-2 right-2 w-2 h-2 rounded-full"
+        style={{ background: '#4ade80', zIndex: 3 }}
+        animate={{ scale: [1, 1.4, 1], opacity: [0.8, 1, 0.8] }}
+        transition={{ duration: 0.9, repeat: Infinity }}
+      />
+    )}
+  </div>
+  );
+});
+
+VideoBox.displayName = 'VideoBox';
+
 // ─── Video Call Bar ───────────────────────────────────────────────────────────
 
 function VideoCallBar({
@@ -1853,79 +1939,6 @@ function VideoCallBar({
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
   localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
-  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement | null> }) => {
-    // Log when VideoBox renders
-    useEffect(() => {
-      console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} VideoBox mounted, ref exists:`, !!videoRef?.current, 'isCameraOff:', isCameraOff);
-      if (videoRef?.current) {
-        // console.log(`[VideoBox] Video element details - paused:`, videoRef.current.paused, 'readyState:', videoRef.current.readyState, 'srcObject:`, !!videoRef.current.srcObject);
-      }
-    }, [isYou, videoRef]);
-
-    return (
-    <div
-      className="relative rounded-xl overflow-hidden flex items-center justify-center flex-1"
-      style={{
-        height: 112,
-        background: isCameraOff && isYou
-          ? 'rgba(0,0,0,0.55)'
-          : `linear-gradient(135deg, ${color}22, rgba(0,0,0,0.75))`,
-        border: `1px solid ${color}40`,
-      }}
-    >
-      {videoRef && (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isYou}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ 
-            display: (isCameraOff && isYou) ? 'none' : 'block',
-            backgroundColor: '#000',
-            zIndex: 1
-          }}
-          onLoadedMetadata={(e) => {
-            const video = e.currentTarget;
-            const computedStyle = window.getComputedStyle(video);
-            console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video metadata loaded`);
-            console.log('  - videoWidth:', video.videoWidth, 'videoHeight:', video.videoHeight);
-            console.log('  - display:', computedStyle.display, 'visibility:', computedStyle.visibility, 'opacity:', computedStyle.opacity);
-            console.log('  - paused:', video.paused, 'readyState:', video.readyState);
-          }}
-          onPlay={() => {
-            console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video started playing`);
-          }}
-          onError={(e) => {
-            console.error(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video error:`, e);
-          }}
-        />
-      )}
-      {((isCameraOff && isYou) || !videoRef) && (
-        <div className="flex flex-col items-center gap-1" style={{ zIndex: 2, position: 'relative' }}>
-          <div className="text-3xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
-          {isCameraOff && isYou && <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>}
-          {!videoRef && !isYou && <div className="text-[10px] text-gray-400">Waiting...</div>}
-        </div>
-      )}
-      <div
-        className="absolute bottom-0 left-0 right-0 px-2 py-1 text-center text-xs font-semibold"
-        style={{ background: 'rgba(0,0,0,0.75)', color }}
-      >
-        {isYou ? 'You' : 'Partner'}
-      </div>
-      {!isYou && (
-        <motion.div
-          className="absolute top-2 right-2 w-2 h-2 rounded-full"
-          style={{ background: '#4ade80' }}
-          animate={{ scale: [1, 1.4, 1], opacity: [0.8, 1, 0.8] }}
-          transition={{ duration: 0.9, repeat: Infinity }}
-        />
-      )}
-    </div>
-    );
-  };
-
   const CtrlBtn = ({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: React.ReactNode; label: string }) => (
     <motion.button
       onClick={onClick}
@@ -1942,8 +1955,8 @@ function VideoCallBar({
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-1.5 w-full">
       <div className="flex gap-1.5 w-full">
-        <VideoBox isYou color="#7c3aed" videoRef={localVideoRef} />
-        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} />
+        <VideoBox isYou color="#7c3aed" videoRef={localVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
+        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
       </div>
 
       <div className="flex items-center gap-1 w-full">
