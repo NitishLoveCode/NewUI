@@ -1872,6 +1872,13 @@ function VideoCallBar({
           muted={isYou}
           className="w-full h-full object-cover"
           style={{ display: isCameraOff && isYou ? 'none' : 'block' }}
+          onLoadedMetadata={(e) => {
+            const video = e.currentTarget;
+            console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video metadata loaded, videoWidth:`, video.videoWidth, 'videoHeight:', video.videoHeight);
+          }}
+          onError={(e) => {
+            console.error(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video error:`, e);
+          }}
         />
       ) : null}
       {(isCameraOff && isYou) || !videoRef ? (
@@ -2276,9 +2283,23 @@ function CodingPracticeContent() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Video refs
+  // Video refs and stream state
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  // Set local video stream when both video ref and stream are available
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      console.log('[CodingPractice] useEffect: Setting local video srcObject, tracks:', localStream.getTracks().length);
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
+    } else if (localStream && !localVideoRef.current) {
+      console.warn('[CodingPractice] useEffect: Have stream but video ref is null, waiting...');
+    } else if (!localStream && localVideoRef.current) {
+      console.log('[CodingPractice] useEffect: Have video ref but no stream yet');
+    }
+  }, [localStream, connectionState]); // Re-run when stream changes or when connection state changes (component re-renders)
 
   // Collaboration hook
   const roomId = `problem-${currentStep}`;
@@ -2318,18 +2339,23 @@ function CodingPracticeContent() {
       try {
         console.log('[CodingPractice] Getting local stream...');
         const stream = await collaboration.getLocalStream();
-        if (stream && localVideoRef.current) {
-          console.log('[CodingPractice] Setting local video srcObject, tracks:', stream.getTracks().length);
-          localVideoRef.current.srcObject = stream;
-          // Ensure video plays
-          localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
+        if (stream) {
+          console.log('[CodingPractice] Got stream with', stream.getTracks().length, 'tracks, storing in state');
+          setLocalStream(stream); // Store stream in state, useEffect will handle setting it to video element
         } else {
-          console.warn('[CodingPractice] No stream or video ref available');
+          console.warn('[CodingPractice] No stream obtained from collaboration.getLocalStream()');
         }
         console.log('[CodingPractice] Initializing WebRTC...');
         await collaboration.initializeWebRTC();
         setConnectionState('connected');
         console.log('[CodingPractice] ✓ Connected successfully');
+        // Give React a moment to render the video element, then check if ref is set
+        setTimeout(() => {
+          console.log('[CodingPractice] Video ref check after 100ms - localVideoRef.current exists:', !!localVideoRef.current);
+          if (localVideoRef.current) {
+            console.log('[CodingPractice] Video element tagName:', localVideoRef.current.tagName, 'srcObject:', !!localVideoRef.current.srcObject);
+          }
+        }, 100);
       } catch (error) {
         console.error('[CodingPractice] Failed to initialize:', error);
         // Still allow connection even if media fails
@@ -2345,19 +2371,20 @@ function CodingPracticeContent() {
       console.log('[CodingPractice] Toggling camera:', newState ? 'OFF' : 'ON');
       
       // Enable/disable video track in the stream
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream;
-        const videoTracks = stream.getVideoTracks();
+      if (localStream) {
+        const videoTracks = localStream.getVideoTracks();
         console.log('[CodingPractice] Found', videoTracks.length, 'video tracks');
         videoTracks.forEach(track => {
           track.enabled = !newState;
           console.log('[CodingPractice] Video track enabled:', track.enabled);
         });
+      } else {
+        console.warn('[CodingPractice] No local stream available to toggle camera');
       }
       
       return newState;
     });
-  }, []);
+  }, [localStream]);
 
   const handleMuteToggle = useCallback(() => {
     setIsMuted(prev => {
@@ -2365,19 +2392,20 @@ function CodingPracticeContent() {
       console.log('[CodingPractice] Toggling audio:', newState ? 'MUTED' : 'UNMUTED');
       
       // Enable/disable audio track in the stream
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream;
-        const audioTracks = stream.getAudioTracks();
+      if (localStream) {
+        const audioTracks = localStream.getAudioTracks();
         console.log('[CodingPractice] Found', audioTracks.length, 'audio tracks');
         audioTracks.forEach(track => {
           track.enabled = !newState;
           console.log('[CodingPractice] Audio track enabled:', track.enabled);
         });
+      } else {
+        console.warn('[CodingPractice] No local stream available to toggle audio');
       }
       
       return newState;
     });
-  }, []);
+  }, [localStream]);
 
   const handleRunCode = useCallback(async (payload: { code: string; language: SupportedLanguage }) => {
     if (codeRunState === 'running') return;
