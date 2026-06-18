@@ -1853,7 +1853,13 @@ function VideoCallBar({
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
   localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
-  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement | null> }) => (
+  const VideoBox = ({ isYou, color, videoRef }: { isYou: boolean; color: string; videoRef?: React.RefObject<HTMLVideoElement | null> }) => {
+    // Log when VideoBox renders
+    useEffect(() => {
+      console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} VideoBox mounted, ref exists:`, !!videoRef?.current);
+    }, [isYou, videoRef]);
+
+    return (
     <div
       className="relative rounded-xl overflow-hidden flex items-center justify-center flex-1"
       style={{
@@ -1903,7 +1909,8 @@ function VideoCallBar({
         />
       )}
     </div>
-  );
+    );
+  };
 
   const CtrlBtn = ({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: React.ReactNode; label: string }) => (
     <motion.button
@@ -2289,17 +2296,32 @@ function CodingPracticeContent() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   // Set local video stream when both video ref and stream are available
+  // Use retry mechanism because React ref attachment might be delayed
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      console.log('[CodingPractice] useEffect: Setting local video srcObject, tracks:', localStream.getTracks().length);
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
-    } else if (localStream && !localVideoRef.current) {
-      console.warn('[CodingPractice] useEffect: Have stream but video ref is null, waiting...');
-    } else if (!localStream && localVideoRef.current) {
-      console.log('[CodingPractice] useEffect: Have video ref but no stream yet');
+    if (!localStream) {
+      console.log('[CodingPractice] useEffect: No stream yet');
+      return;
     }
-  }, [localStream, connectionState]); // Re-run when stream changes or when connection state changes (component re-renders)
+
+    let attempts = 0;
+    const maxAttempts = 20; // Try for 2 seconds (20 * 100ms)
+    
+    const trySetVideo = () => {
+      attempts++;
+      if (localVideoRef.current) {
+        console.log('[CodingPractice] useEffect: Setting local video srcObject after', attempts, 'attempts, tracks:', localStream.getTracks().length);
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
+      } else if (attempts < maxAttempts) {
+        console.log('[CodingPractice] useEffect: Video ref not ready yet, attempt', attempts, '/', maxAttempts);
+        setTimeout(trySetVideo, 100);
+      } else {
+        console.error('[CodingPractice] useEffect: Failed to set video after', maxAttempts, 'attempts - video element never mounted');
+      }
+    };
+
+    trySetVideo();
+  }, [localStream, connectionState]);
 
   // Collaboration hook
   const roomId = `problem-${currentStep}`;
@@ -2348,14 +2370,7 @@ function CodingPracticeContent() {
         console.log('[CodingPractice] Initializing WebRTC...');
         await collaboration.initializeWebRTC();
         setConnectionState('connected');
-        console.log('[CodingPractice] ✓ Connected successfully');
-        // Give React a moment to render the video element, then check if ref is set
-        setTimeout(() => {
-          console.log('[CodingPractice] Video ref check after 100ms - localVideoRef.current exists:', !!localVideoRef.current);
-          if (localVideoRef.current) {
-            console.log('[CodingPractice] Video element tagName:', localVideoRef.current.tagName, 'srcObject:', !!localVideoRef.current.srcObject);
-          }
-        }, 100);
+        console.log('[CodingPractice] ✓ Connected successfully, waiting for video element to mount...');
       } catch (error) {
         console.error('[CodingPractice] Failed to initialize:', error);
         // Still allow connection even if media fails
