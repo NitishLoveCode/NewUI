@@ -103,19 +103,38 @@ export class WebRTCHandler {
         }
         
         console.log('[WebRTC] Received offer from', fromPeer, 'in room', data.roomId);
+        
+        if (!fromPeer) {
+          throw new Error('Cannot determine sender of offer');
+        }
+        
+        if (!this.peerConnection) {
+          throw new Error('Peer connection not initialized');
+        }
+        
         this.targetPeer = fromPeer;
         this.roomId = data.roomId;
-        await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
-        const answer = await this.peerConnection!.createAnswer();
-        await this.peerConnection!.setLocalDescription(answer);
+        
+        console.log('[WebRTC] Setting remote description (offer)');
+        await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+        
+        console.log('[WebRTC] Creating answer');
+        const answer = await this.peerConnection.createAnswer();
+        
+        console.log('[WebRTC] Setting local description (answer)');
+        await this.peerConnection.setLocalDescription(answer);
+        
         console.log('[WebRTC] Sending answer to', fromPeer);
         this.socket.emit('answer', {
           target: fromPeer,
           roomId: data.roomId,
           sdp: answer.sdp,
         });
+        console.log('[WebRTC] ✓ Answer emitted successfully');
       } catch (error) {
-        this.config.onError?.(`Error handling offer: ${error}`);
+        const errorMsg = `Error handling offer: ${error}`;
+        console.error('[WebRTC]', errorMsg);
+        this.config.onError?.(errorMsg);
       }
     });
 
@@ -123,9 +142,18 @@ export class WebRTCHandler {
       try {
         const fromPeer = data.from || data.target;
         console.log('[WebRTC] Received answer from', fromPeer);
-        await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+        
+        if (!this.peerConnection) {
+          throw new Error('Peer connection not initialized');
+        }
+        
+        console.log('[WebRTC] Setting remote description (answer)');
+        await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+        console.log('[WebRTC] ✓ Answer processed successfully');
       } catch (error) {
-        this.config.onError?.(`Error handling answer: ${error}`);
+        const errorMsg = `Error handling answer: ${error}`;
+        console.error('[WebRTC]', errorMsg);
+        this.config.onError?.(errorMsg);
       }
     });
 
@@ -153,17 +181,25 @@ export class WebRTCHandler {
   async createOffer(targetPeer: string, roomId: string) {
     try {
       console.log('[WebRTC] Creating offer for peer:', targetPeer, 'in room:', roomId);
+      
+      if (!this.peerConnection) {
+        throw new Error('Peer connection not initialized');
+      }
+      
       this.targetPeer = targetPeer;
       this.roomId = roomId;
 
       // Create data channel
-      this.dataChannel = this.peerConnection!.createDataChannel('collaboration', {
+      this.dataChannel = this.peerConnection.createDataChannel('collaboration', {
         ordered: true,
       });
       this.setupDataChannel();
+      console.log('[WebRTC] Data channel created');
 
-      const offer = await this.peerConnection!.createOffer();
-      await this.peerConnection!.setLocalDescription(offer);
+      const offer = await this.peerConnection.createOffer();
+      console.log('[WebRTC] Offer created, setting local description');
+      await this.peerConnection.setLocalDescription(offer);
+      console.log('[WebRTC] Local description set');
 
       console.log('[WebRTC] Sending offer to', targetPeer);
       this.socket.emit('offer', {
@@ -171,8 +207,12 @@ export class WebRTCHandler {
         roomId,
         sdp: offer.sdp,
       });
+      console.log('[WebRTC] ✓ Offer emitted successfully');
     } catch (error) {
-      this.config.onError?.(`Error creating offer: ${error}`);
+      const errorMsg = `Error creating offer: ${error}`;
+      console.error('[WebRTC]', errorMsg);
+      this.config.onError?.(errorMsg);
+      throw error; // Re-throw so caller knows it failed
     }
   }
 

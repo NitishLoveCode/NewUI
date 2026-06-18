@@ -176,16 +176,26 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
         if (localStreamRef.current) {
           console.log('[Collaboration] Initializing WebRTC with local stream');
           await webrtcRef.current.initialize(localStreamRef.current);
+          console.log('[Collaboration] ✓ WebRTC initialized successfully');
         } else {
           // Initialize without local stream
           console.warn('[Collaboration] No local stream, WebRTC will be audio-only or peer-broadcast only');
           await webrtcRef.current.initialize();
+          console.log('[Collaboration] ✓ WebRTC initialized without local stream');
         }
+      } else {
+        console.log('[Collaboration] WebRTC handler already exists, reusing');
       }
 
       if (targetPeer) {
-        console.log('[Collaboration] Creating offer for peer:', targetPeer);
+        console.log('[Collaboration] Creating offer for peer:', targetPeer, 'in room:', options.roomId);
+        if (!webrtcRef.current) {
+          throw new Error('WebRTC handler not initialized');
+        }
         await webrtcRef.current.createOffer(targetPeer, options.roomId);
+        console.log('[Collaboration] ✓ Offer created and sent successfully');
+      } else {
+        console.log('[Collaboration] No target peer specified, waiting for incoming offer');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize WebRTC';
