@@ -106,7 +106,8 @@ function registerRoomHandlers(io, socket) {
     if (!roomId || !socket.data.rooms.has(roomId)) return;
     const message = typeof payload.message === 'string' ? payload.message.slice(0, 2000) : '';
     if (!message) return;
-    io.to(roomId).emit('chat-message', {
+    // Broadcast to others only, not back to sender
+    socket.to(roomId).emit('chat-message', {
       roomId,
       socketId: socket.id,
       userId: socket.data.userId,

@@ -2357,6 +2357,7 @@ function CodingPracticeContent() {
     userId: isAnonymous ? undefined : 'user-1',
     username: isAnonymous ? 'Anonymous' : 'You',
     onChatMessage: (data) => {
+      // Server now only sends to others, so all received messages are from remote users
       const now = new Date();
       const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       setChatMessages(prev => [...prev, {
@@ -2395,10 +2396,10 @@ function CodingPracticeContent() {
       usersCount: users.length
     });
 
-    if (connectionState !== 'connected' || !localStream || webrtcInitiatedRef.current || !socketId) {
+    // Allow WebRTC initialization even without local stream (can still receive remote video)
+    if (connectionState !== 'connected' || webrtcInitiatedRef.current || !socketId) {
       console.log('[CodingPractice] Skipping WebRTC init due to:', {
         notConnected: connectionState !== 'connected',
-        noLocalStream: !localStream,
         alreadyInitiated: webrtcInitiatedRef.current,
         noSocketId: !socketId
       });
@@ -2421,6 +2422,7 @@ function CodingPracticeContent() {
         // We're the first user, so we initiate the call to the second user
         const targetPeer = secondUser.socketId;
         console.log('[CodingPractice] We are first user, initiating WebRTC with peer:', targetPeer);
+        console.log('[CodingPractice] Local stream available:', !!localStream);
         webrtcInitiatedRef.current = true;
         collaboration.initializeWebRTC(targetPeer).catch(err => {
           console.error('[CodingPractice] Failed to initiate WebRTC with peer:', err);
@@ -2429,6 +2431,7 @@ function CodingPracticeContent() {
       } else {
         // We're the second user, we wait for the first user to send an offer
         console.log('[CodingPractice] We are second user, waiting for offer from peer');
+        console.log('[CodingPractice] Local stream available:', !!localStream);
         // Still initialize WebRTC handler without creating an offer
         webrtcInitiatedRef.current = true;
         collaboration.initializeWebRTC().catch(err => {
@@ -2449,8 +2452,16 @@ function CodingPracticeContent() {
         if (stream) {
           console.log('[CodingPractice] Got stream with', stream.getTracks().length, 'tracks, storing in state');
           setLocalStream(stream); // Store stream in state, useEffect will handle setting it to video element
+          
+          // Check what we actually got
+          const hasVideo = stream.getVideoTracks().length > 0;
+          const hasAudio = stream.getAudioTracks().length > 0;
+          console.log('[CodingPractice] Stream capabilities - Video:', hasVideo, 'Audio:', hasAudio);
         } else {
-          console.warn('[CodingPractice] No stream obtained from collaboration.getLocalStream()');
+          console.warn('[CodingPractice] No camera/microphone available - proceeding in receive-only mode');
+          // Still mark camera as "off" since we don't have video
+          setIsCameraOff(true);
+          setIsMuted(true);
         }
         // Don't initialize WebRTC here - let the useEffect handle it when users are available
         console.log('[CodingPractice] Waiting for WebRTC initialization...');
@@ -2458,7 +2469,10 @@ function CodingPracticeContent() {
         console.log('[CodingPractice] ✓ Connected successfully, waiting for video element to mount...');
       } catch (error) {
         console.error('[CodingPractice] Failed to initialize:', error);
+        // Still proceed with connection even if camera/mic failed
         setConnectionState('connected');
+        setIsCameraOff(true);
+        setIsMuted(true);
       }
     }, 1000);
   }, [collaboration]);
@@ -2472,12 +2486,16 @@ function CodingPracticeContent() {
       if (localStream) {
         const videoTracks = localStream.getVideoTracks();
         console.log('[CodingPractice] Found', videoTracks.length, 'video tracks');
-        videoTracks.forEach(track => {
-          track.enabled = !newState;
-          console.log('[CodingPractice] Video track enabled:', track.enabled);
-        });
+        if (videoTracks.length > 0) {
+          videoTracks.forEach(track => {
+            track.enabled = !newState;
+            console.log('[CodingPractice] Video track enabled:', track.enabled);
+          });
+        } else {
+          console.warn('[CodingPractice] No video tracks available - camera may not be present');
+        }
       } else {
-        console.warn('[CodingPractice] No local stream available to toggle camera');
+        console.warn('[CodingPractice] No local stream available - camera not initialized');
       }
       
       return newState;
@@ -2493,12 +2511,16 @@ function CodingPracticeContent() {
       if (localStream) {
         const audioTracks = localStream.getAudioTracks();
         console.log('[CodingPractice] Found', audioTracks.length, 'audio tracks');
-        audioTracks.forEach(track => {
-          track.enabled = !newState;
-          console.log('[CodingPractice] Audio track enabled:', track.enabled);
-        });
+        if (audioTracks.length > 0) {
+          audioTracks.forEach(track => {
+            track.enabled = !newState;
+            console.log('[CodingPractice] Audio track enabled:', track.enabled);
+          });
+        } else {
+          console.warn('[CodingPractice] No audio tracks available - microphone may not be present');
+        }
       } else {
-        console.warn('[CodingPractice] No local stream available to toggle audio');
+        console.warn('[CodingPractice] No local stream available - microphone not initialized');
       }
       
       return newState;
