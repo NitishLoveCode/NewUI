@@ -53,11 +53,18 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
       roomId: options.roomId,
       userId: options.userId,
       username: options.username,
-    }, (response: { ok: boolean; users: any[] }) => {
+    }, (response: { ok: boolean; socketId?: string; roomId?: string; users: any[] }) => {
       console.log('[Collaboration] join-room response:', response);
       if (response.ok) {
         setConnected(true);
         setUsers(response.users || []);
+        
+        // Store our socket ID from the response
+        if (response.socketId) {
+          console.log('[Collaboration] ✓ Got our socketId from join-room:', response.socketId);
+          setSocketId(response.socketId);
+        }
+        
         console.log('[Collaboration] ✓ Successfully joined room with', (response.users || []).length, 'users');
       } else {
         console.error('[Collaboration] ✗ Failed to join room');
