@@ -92,7 +92,10 @@ export function useWebRTC(opts: UseWebRTCOptions = {}): UseWebRTCResult {
   const startLocalMedia = useCallback<UseWebRTCResult["startLocalMedia"]>(
     async (constraints = { video: true, audio: true }) => {
       if (localStreamRef.current) return localStreamRef.current;
+      console.log('[WebRTC] Starting local media with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('[WebRTC] Got local stream with', stream.getTracks().length, 'tracks:', 
+        stream.getTracks().map(t => `${t.kind}:${t.label}`));
       localStreamRef.current = stream;
       setLocalStream(stream);
       return stream;
@@ -124,17 +127,14 @@ export function useWebRTC(opts: UseWebRTCOptions = {}): UseWebRTCResult {
       };
 
       pc.ontrack = (event) => {
-        let stream = remoteStreamRef.current;
-        if (!stream) {
-          stream = new MediaStream();
-          remoteStreamRef.current = stream;
-        }
-        event.streams[0]?.getTracks().forEach((t) => stream!.addTrack(t));
-        if (event.streams[0]) {
+        console.log('[WebRTC] Received remote track:', event.track.kind, event.streams.length);
+        // Use the first stream directly from the event
+        if (event.streams && event.streams[0]) {
           remoteStreamRef.current = event.streams[0];
+          setRemoteStream(event.streams[0]);
+          cbRef.current.onRemoteStream?.(event.streams[0]);
+          console.log('[WebRTC] Remote stream set with', event.streams[0].getTracks().length, 'tracks');
         }
-        setRemoteStream(remoteStreamRef.current);
-        cbRef.current.onRemoteStream?.(remoteStreamRef.current);
       };
 
       pc.onconnectionstatechange = () => {

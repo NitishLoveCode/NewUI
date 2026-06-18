@@ -31,12 +31,19 @@ export default function CallPage({ params }: { params: Promise<{ id: string }> }
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
+      console.log('[Call] Setting local video srcObject', localStream);
       localVideoRef.current.srcObject = localStream;
+      // Ensure playback starts
+      localVideoRef.current.play().catch(e => console.error('[Call] Local video play error:', e));
     }
   }, [localStream]);
+  
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
+      console.log('[Call] Setting remote video srcObject', remoteStream);
       remoteVideoRef.current.srcObject = remoteStream;
+      // Ensure playback starts
+      remoteVideoRef.current.play().catch(e => console.error('[Call] Remote video play error:', e));
     }
   }, [remoteStream]);
 
@@ -91,9 +98,16 @@ export default function CallPage({ params }: { params: Promise<{ id: string }> }
 
       <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
         <div className="relative overflow-hidden rounded-md border border-zinc-800 bg-black">
-          <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-contain" />
+          <video 
+            ref={remoteVideoRef} 
+            autoPlay 
+            playsInline 
+            className="h-full w-full object-contain"
+            controls={false}
+            style={{ backgroundColor: '#000' }}
+          />
           <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs">
-            Remote
+            Remote {remoteStream ? '✓' : '⏳'}
           </span>
         </div>
         <div className="relative overflow-hidden rounded-md border border-zinc-800 bg-black">
@@ -103,9 +117,11 @@ export default function CallPage({ params }: { params: Promise<{ id: string }> }
             playsInline
             muted
             className="h-full w-full object-contain"
+            controls={false}
+            style={{ backgroundColor: '#000' }}
           />
           <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs">
-            You
+            You {localStream ? '✓' : '⏳'}
           </span>
         </div>
       </div>
