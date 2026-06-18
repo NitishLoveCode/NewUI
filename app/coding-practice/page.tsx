@@ -2381,17 +2381,17 @@ function CodingPracticeContent() {
     },
   });
 
-  // Get users from collaboration hook
-  const { users } = collaboration;
+  // Get users and socketId from collaboration hook
+  const { users, socketId } = collaboration;
   const webrtcInitiatedRef = useRef(false);
 
   // Initiate WebRTC connection when another user joins
   useEffect(() => {
-    if (connectionState !== 'connected' || !localStream || webrtcInitiatedRef.current) {
+    if (connectionState !== 'connected' || !localStream || webrtcInitiatedRef.current || !socketId) {
       return;
     }
 
-    console.log('[CodingPractice] Checking for peers. Users in room:', users.length);
+    console.log('[CodingPractice] Checking for peers. Users in room:', users.length, 'Our socketId:', socketId);
 
     // When we have exactly 2 users, initiate WebRTC with the other peer
     // We'll compare socket IDs - the one with the lexically smaller ID initiates
@@ -2403,12 +2403,7 @@ function CodingPracticeContent() {
 
       console.log('[CodingPractice] Two users detected. First:', firstUser.socketId, 'Second:', secondUser.socketId);
 
-      // We need to determine which user we are
-      // If we're the first user (lexically smaller socketId), we initiate
-      // We can check by seeing which user has our userId
-      const ourUser = users.find((u: any) => u.userId === (isAnonymous ? undefined : 'user-1'));
-      
-      if (ourUser && ourUser.socketId === firstUser.socketId) {
+      if (socketId === firstUser.socketId) {
         // We're the first user, so we initiate the call to the second user
         const targetPeer = secondUser.socketId;
         console.log('[CodingPractice] We are first user, initiating WebRTC with peer:', targetPeer);
@@ -2428,7 +2423,7 @@ function CodingPracticeContent() {
         });
       }
     }
-  }, [users, connectionState, localStream, collaboration, isAnonymous]);
+  }, [users, connectionState, localStream, collaboration, socketId]);
 
   const handleConnect = useCallback((anon: boolean) => {
     setIsAnonymous(anon);

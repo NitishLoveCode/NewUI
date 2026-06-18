@@ -23,6 +23,7 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
   const [connected, setConnected] = useState(false);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [socketId, setSocketId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize socket connection
@@ -64,8 +65,9 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
     });
 
     // Setup event listeners
-    socket.on('connected', ({ socketId }: { socketId: string }) => {
-      console.log('[Collaboration] connected event received, socketId:', socketId);
+    socket.on('connected', ({ socketId: sid }: { socketId: string }) => {
+      console.log('[Collaboration] connected event received, socketId:', sid);
+      setSocketId(sid);
     });
 
     socket.on('user-joined', (data: any) => {
@@ -259,6 +261,7 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
 
   return {
     connected,
+    socketId,
     remoteStream,
     users,
     error,

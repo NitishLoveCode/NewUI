@@ -15,6 +15,7 @@ export class WebRTCHandler {
   remoteStream: MediaStream | null = null;
   config: WebRTCConfig;
   targetPeer: string | null = null;
+  roomId: string = 'default-room';
 
   constructor(socket: Socket, config: WebRTCConfig = {}) {
     this.socket = socket;
@@ -37,15 +38,19 @@ export class WebRTCHandler {
 
     // Add local stream tracks if available
     if (localStream) {
+      console.log('[WebRTC] Adding local tracks to peer connection:', localStream.getTracks().length);
       localStream.getTracks().forEach(track => {
+        console.log('[WebRTC] Adding track:', track.kind, track.label);
         this.peerConnection!.addTrack(track, localStream);
       });
     }
 
     // Setup remote stream
     this.peerConnection.ontrack = (event) => {
+      console.log('[WebRTC] ontrack event received, track kind:', event.track.kind, 'streams:', event.streams.length);
       if (event.streams[0]) {
         this.remoteStream = event.streams[0];
+        console.log('[WebRTC] ✓ Setting remote stream with', event.streams[0].getTracks().length, 'tracks');
         this.config.onRemoteStream?.(event.streams[0]);
       }
     };
@@ -53,16 +58,20 @@ export class WebRTCHandler {
     // Handle ICE candidates
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
+        console.log('[WebRTC] Sending ICE candidate to', this.targetPeer, 'in room', this.roomId);
         this.socket.emit('ice-candidate', {
           target: this.targetPeer,
-          roomId: this.getRoomId(),
+          roomId: this.roomId,
           candidate: event.candidate,
         });
+      } else {
+        console.log('[WebRTC] ICE gathering complete');
       }
     };
 
     // Connection state changes
     this.peerConnection.onconnectionstatechange = () => {
+      console.log('[WebRTC] Connection state:', this.peerConnection!.connectionState);
       this.config.onConnectionStateChange?.(this.peerConnection!.connectionState);
     };
 
@@ -79,10 +88,13 @@ export class WebRTCHandler {
   private setupSocketListeners() {
     this.socket.on('offer', async (data: { target: string; roomId: string; sdp: string }) => {
       try {
+        console.log('[WebRTC] Received offer from', data.target, 'in room', data.roomId);
         this.targetPeer = data.target;
+        this.roomId = data.roomId;
         await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
         const answer = await this.peerConnection!.createAnswer();
         await this.peerConnection!.setLocalDescription(answer);
+        console.log('[WebRTC] Sending answer to', data.target);
         this.socket.emit('answer', {
           target: data.target,
           roomId: data.roomId,
@@ -95,6 +107,7 @@ export class WebRTCHandler {
 
     this.socket.on('answer', async (data: { target: string; roomId: string; sdp: string }) => {
       try {
+        console.log('[WebRTC] Received answer from', data.target);
         await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
       } catch (error) {
         this.config.onError?.(`Error handling answer: ${error}`);
@@ -104,6 +117,7 @@ export class WebRTCHandler {
     this.socket.on('ice-candidate', async (data: { target: string; roomId: string; candidate: any }) => {
       try {
         if (data.candidate) {
+          console.log('[WebRTC] Received ICE candidate from', data.target);
           await this.peerConnection!.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
       } catch (error) {
@@ -122,7 +136,9 @@ export class WebRTCHandler {
 
   async createOffer(targetPeer: string, roomId: string) {
     try {
+      console.log('[WebRTC] Creating offer for peer:', targetPeer, 'in room:', roomId);
       this.targetPeer = targetPeer;
+      this.roomId = roomId;
 
       // Create data channel
       this.dataChannel = this.peerConnection!.createDataChannel('collaboration', {
@@ -133,6 +149,7 @@ export class WebRTCHandler {
       const offer = await this.peerConnection!.createOffer();
       await this.peerConnection!.setLocalDescription(offer);
 
+      console.log('[WebRTC] Sending offer to', targetPeer);
       this.socket.emit('offer', {
         target: targetPeer,
         roomId,
@@ -166,8 +183,5 @@ export class WebRTCHandler {
     return this.remoteStream;
   }
 
-  private getRoomId(): string {
-    // This should be injected or stored in the component
-    return 'default-room';
-  }
+
 }
