@@ -16,9 +16,13 @@ export class WebRTCHandler {
   config: WebRTCConfig;
   targetPeer: string | null = null;
   roomId: string = 'default-room';
+  ourSocketId: string | null = null;
+  roomUsers: string[] = [];
 
-  constructor(socket: Socket, config: WebRTCConfig = {}) {
+  constructor(socket: Socket, config: WebRTCConfig = {}, ourSocketId?: string, roomUsers?: string[]) {
     this.socket = socket;
+    this.ourSocketId = ourSocketId || null;
+    this.roomUsers = roomUsers || [];
     this.config = {
       iceServers: [
         { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
@@ -87,17 +91,26 @@ export class WebRTCHandler {
 
   private setupSocketListeners() {
     console.log('[WebRTC] Setting up socket listeners for offer/answer/ice-candidate events');
-    this.socket.on('offer', async (data: { target: string; roomId: string; sdp: string }) => {
+    this.socket.on('offer', async (data: { from?: string; target?: string; roomId: string; sdp: string }) => {
       try {
-        console.log('[WebRTC] Received offer from', data.target, 'in room', data.roomId);
-        this.targetPeer = data.target;
+        // The sender is in 'from' field (sent by server) or we use 'target' as fallback
+        let fromPeer = data.from || data.target;
+        
+        // If still undefined, try to determine from room users (should be the other user in a 2-person room)
+        if (!fromPeer && this.ourSocketId && this.roomUsers.length === 2) {
+          fromPeer = this.roomUsers.find(id => id !== this.ourSocketId) || null;
+          console.log('[WebRTC] Determined peer from room users:', fromPeer);
+        }
+        
+        console.log('[WebRTC] Received offer from', fromPeer, 'in room', data.roomId);
+        this.targetPeer = fromPeer;
         this.roomId = data.roomId;
         await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
         const answer = await this.peerConnection!.createAnswer();
         await this.peerConnection!.setLocalDescription(answer);
-        console.log('[WebRTC] Sending answer to', data.target);
+        console.log('[WebRTC] Sending answer to', fromPeer);
         this.socket.emit('answer', {
-          target: data.target,
+          target: fromPeer,
           roomId: data.roomId,
           sdp: answer.sdp,
         });
@@ -106,19 +119,21 @@ export class WebRTCHandler {
       }
     });
 
-    this.socket.on('answer', async (data: { target: string; roomId: string; sdp: string }) => {
+    this.socket.on('answer', async (data: { from?: string; target?: string; roomId: string; sdp: string }) => {
       try {
-        console.log('[WebRTC] Received answer from', data.target);
+        const fromPeer = data.from || data.target;
+        console.log('[WebRTC] Received answer from', fromPeer);
         await this.peerConnection!.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
       } catch (error) {
         this.config.onError?.(`Error handling answer: ${error}`);
       }
     });
 
-    this.socket.on('ice-candidate', async (data: { target: string; roomId: string; candidate: any }) => {
+    this.socket.on('ice-candidate', async (data: { from?: string; target?: string; roomId: string; candidate: any }) => {
       try {
         if (data.candidate) {
-          console.log('[WebRTC] Received ICE candidate from', data.target);
+          const fromPeer = data.from || data.target;
+          console.log('[WebRTC] Received ICE candidate from', fromPeer);
           await this.peerConnection!.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
       } catch (error) {

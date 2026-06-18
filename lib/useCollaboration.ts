@@ -154,18 +154,24 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
 
       if (!webrtcRef.current) {
         console.log('[Collaboration] Creating WebRTCHandler...');
-        webrtcRef.current = new WebRTCHandler(socket, {
-          onRemoteStream: (stream) => {
-            console.log('[Collaboration] ✓ Received remote stream with', stream.getTracks().length, 'tracks');
-            setRemoteStream(stream);
-            options.onRemoteStream?.(stream);
+        const roomUserIds = users.map((u: any) => u.socketId);
+        webrtcRef.current = new WebRTCHandler(
+          socket,
+          {
+            onRemoteStream: (stream) => {
+              console.log('[Collaboration] ✓ Received remote stream with', stream.getTracks().length, 'tracks');
+              setRemoteStream(stream);
+              options.onRemoteStream?.(stream);
+            },
+            onError: (err) => {
+              console.error('[Collaboration] WebRTC error:', err);
+              setError(err);
+              options.onConnectionError?.(err);
+            },
           },
-          onError: (err) => {
-            console.error('[Collaboration] WebRTC error:', err);
-            setError(err);
-            options.onConnectionError?.(err);
-          },
-        });
+          socketId || undefined,
+          roomUserIds
+        );
 
         if (localStreamRef.current) {
           console.log('[Collaboration] Initializing WebRTC with local stream');
@@ -186,7 +192,7 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
       setError(message);
       console.error('[Collaboration] Error initializing WebRTC:', err);
     }
-  }, [options.roomId]);
+  }, [options.roomId, socketId, users]);
 
   // Send code changes
   const sendCodeChange = useCallback((code: string, language?: string, cursor?: any) => {
