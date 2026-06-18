@@ -1194,7 +1194,7 @@ function CodeEditorPanel({
 
 function ChatDrawer({
   isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect,
-  codeRunState, terminalLines, onRun, onSubmit, currentStep,
+  codeRunState, terminalLines, onRun, onSubmit, currentStep, localVideoRef, remoteVideoRef,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1214,6 +1214,8 @@ function ChatDrawer({
   onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
   currentStep: number;
+  localVideoRef: React.RefObject<HTMLVideoElement | null>;
+  remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
   const [showFiles, setShowFiles] = useState(false);
   const [keyboardShareEnabled, setKeyboardShareEnabled] = useState(false);
@@ -1343,7 +1345,18 @@ function ChatDrawer({
                       boxShadow: isCameraOff ? 'none' : '0 0 20px rgba(124,58,237,0.2)',
                     }}
                   >
-                    <span className="text-3xl">{isCameraOff ? '📹' : '👨‍💻'}</span>
+                    {isCameraOff ? (
+                      <span className="text-3xl">📹</span>
+                    ) : (
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ transform: 'scaleX(-1)' }}
+                      />
+                    )}
 
                     {/* Label - Top */}
                     <div className="absolute top-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
@@ -1460,7 +1473,16 @@ function ChatDrawer({
                       boxShadow: '0 0 20px rgba(34,211,238,0.2)',
                     }}
                   >
-                    <span className="text-3xl">🧑‍💻</span>
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    {/* Fallback when no remote stream */}
+                    {!remoteVideoRef?.current?.srcObject && (
+                      <span className="text-3xl absolute">🧑‍💻</span>
+                    )}
 
                     {/* Label - Top */}
                     <div className="absolute top-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
@@ -2276,6 +2298,8 @@ function CollaborationArena({
         onRun={onRunCode}
         onSubmit={onSubmit}
         currentStep={currentStep}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
       />
     </motion.div>
   );
