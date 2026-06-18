@@ -31,9 +31,9 @@ const Editor = dynamic(() => import('@monaco-editor/react'), {
 
 
 const INITIAL_CHAT = [
-  { id: 1, user: 'Alex', avatar: '🧑‍💻', msg: "Let's tackle edge cases first!", time: '10:42', me: false, color: '#22d3ee' },
-  { id: 2, user: 'You',  avatar: '👨‍💻', msg: 'Binary search on sorted array works best here.', time: '10:43', me: true,  color: '#00e676' },
-  { id: 3, user: 'Alex', avatar: '🧑‍💻', msg: 'Yes! Check mid element → adjust left/right', time: '10:43', me: false, color: '#22d3ee' },
+  // { id: 1, user: 'Alex', avatar: '🧑‍💻', msg: "Let's tackle edge cases first!", time: '10:42', me: false, color: '#22d3ee' },
+  // { id: 2, user: 'You',  avatar: '👨‍💻', msg: 'Binary search on sorted array works best here.', time: '10:43', me: true,  color: '#00e676' },
+  // { id: 3, user: 'Alex', avatar: '🧑‍💻', msg: 'Yes! Check mid element → adjust left/right', time: '10:43', me: false, color: '#22d3ee' },
 ];
 
 const CODE_LINES = [
