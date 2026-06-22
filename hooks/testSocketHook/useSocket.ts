@@ -5,12 +5,16 @@ import io, { Socket } from 'socket.io-client';
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 
 
-const getSocket = (socket: Socket | null): Socket => {
+
+let socketInstance: Socket | null = null;
+
+const getSocket = (): Socket => {
+
+    if(socketInstance) return socketInstance;
 
     console.log('[useSocket] Initializing Socket.IO client...');
-    console.log('[useSocket] Target URL:', SOCKET_URL);
 
-    socket = io(SOCKET_URL, {
+    socketInstance = io(SOCKET_URL, {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
@@ -18,36 +22,34 @@ const getSocket = (socket: Socket | null): Socket => {
         transports: ['websocket', 'polling'],
         rejectUnauthorized: process.env.NODE_ENV === 'production' ? true : false,
     });
-    socket.on('connect', () => {
+    socketInstance.on('connect', () => {
         console.log('[useSocket] ✓ Connected successfully');
-        console.log('[useSocket] Socket ID:', socket?.id);
+        console.log('[useSocket] Socket ID:', socketInstance?.id);
     });
-    socket.on('disconnect', (reason) => {
+    socketInstance.on('disconnect', (reason) => {
         console.log('[useSocket] ✗ Disconnected. Reason:', reason);
     });
-    socket.on('connect_error', (error) => {
+    socketInstance.on('connect_error', (error) => {
         console.error('[useSocket] ✗ Connection error:', error);
     });
-    socket.on('error', (error) => {
+    socketInstance.on('error', (error) => {
         console.error('[useSocket] ✗ Socket error:', error);
     });
 
-    return socket;
+    return socketInstance;
 }
 
 
 
 export default function useSocket() {
-    let socket: Socket | null = null;
-    if(!socket){
-        socket = getSocket(socket);
-    }
+    
+    const socket = getSocket();
 
     const disconnectSocket = () => {
-        if (socket) {
+        if (socketInstance) {
             console.log('[useSocket] Disconnecting...');
-            socket.disconnect();
-            socket = null;
+            socketInstance.disconnect();
+            socketInstance = null;
         }
     }
 
