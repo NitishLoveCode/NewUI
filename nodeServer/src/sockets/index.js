@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const logger = require('../utils/logger');
 const { registerRoomHandlers, handleDisconnect } = require('./roomHandler');
 const { registerWebRTCHandlers } = require('./webrtcHandler');
+const { registerMatchHandlers, handleMatchDisconnect } = require('./matchHandler');
 
 function buildCorsOrigin() {
   const raw = process.env.CORS_ORIGIN || '*';
@@ -29,11 +30,20 @@ function initSocket(httpServer) {
     socket.emit('connected', { socketId: socket.id });
 
     registerRoomHandlers(io, socket);
+
+    // Don't use this its deprecated.
     registerWebRTCHandlers(io, socket);
+
+
+    // new webrtc handle auto connect and like omigle.
+    //  auto connect to random user and start webrtc. also can be used 
+    // for match making. like 1v1 or group chat.
+    registerMatchHandlers(io, socket); 
 
     socket.on('disconnect', (reason) => {
       logger.info('Socket disconnected', { socketId: socket.id, reason });
       handleDisconnect(io, socket);
+      handleMatchDisconnect(io, socket);
     });
 
     socket.on('error', (err) => {
