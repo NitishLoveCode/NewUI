@@ -22,6 +22,9 @@ export default function TestMatchPage() {
         partnerId,
         isMuted,
         isCameraOff,
+        hasAudio,
+        hasVideo,
+        mediaError,
         joinQueue,
         skip,
         leave,
@@ -63,7 +66,14 @@ export default function TestMatchPage() {
                         title="You"
                         videoRef={localVideoRef}
                         muted
-                        badge={isCameraOff ? 'camera off' : undefined}
+                        badge={
+                            !hasVideo
+                                ? 'no camera'
+                                : isCameraOff
+                                    ? 'camera off'
+                                    : undefined
+                        }
+                        placeholder={!hasVideo ? 'No camera available' : undefined}
                     />
                     <VideoTile
                         title="Stranger"
@@ -79,6 +89,13 @@ export default function TestMatchPage() {
                         }
                     />
                 </div>
+
+                {/* Media warning */}
+                {mediaError && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        {mediaError}
+                    </div>
+                )}
 
                 {/* Session meta */}
                 {(roomId || partnerId) && (
@@ -111,17 +128,19 @@ export default function TestMatchPage() {
                         size="lg"
                         variant={isMuted ? 'destructive' : 'outline'}
                         onClick={toggleMic}
+                        disabled={!hasAudio}
                     >
-                        {isMuted ? <MicOff /> : <Mic />}
-                        {isMuted ? 'Unmute' : 'Mute'}
+                        {isMuted || !hasAudio ? <MicOff /> : <Mic />}
+                        {!hasAudio ? 'No mic' : isMuted ? 'Unmute' : 'Mute'}
                     </Button>
                     <Button
                         size="lg"
                         variant={isCameraOff ? 'destructive' : 'outline'}
                         onClick={toggleCamera}
+                        disabled={!hasVideo}
                     >
-                        {isCameraOff ? <VideoOff /> : <Video />}
-                        {isCameraOff ? 'Camera on' : 'Camera off'}
+                        {isCameraOff || !hasVideo ? <VideoOff /> : <Video />}
+                        {!hasVideo ? 'No camera' : isCameraOff ? 'Camera on' : 'Camera off'}
                     </Button>
                 </div>
             </div>

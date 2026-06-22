@@ -59,18 +59,57 @@ export default function useWebRTC() {
     const [partnerId, setPartnerId] = useState<string | null>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
+    // Tracks what local devices we actually managed to acquire. Either may be
+    // false if the user denied permission, has no hardware, or the device is
+    // already in use by another tab. Negotiation still proceeds either way.
+    const [hasAudio, setHasAudio] = useState(false);
+    const [hasVideo, setHasVideo] = useState(false);
+    const [mediaError, setMediaError] = useState<string | null>(null);
 
     // ------------------------------------------------------------------
-    // Local media
+    // Local media (BEST EFFORT)
+    //
+    // Strategy: try audio+video, then audio-only, then video-only, then
+    // proceed with nothing. We NEVER throw — a failure here must not block
+    // matchmaking. The peer connection will still be created with recv-only
+    // transceivers so we can at least hear/see the other side.
     // ------------------------------------------------------------------
 
-    const startLocalStream = useCallback(async (): Promise<MediaStream> => {
+    const startLocalStream = useCallback(async (): Promise<MediaStream | null> => {
         if (localStreamRef.current) return localStreamRef.current;
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-        });
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+            setMediaError('Media devices unavailable in this browser/context.');
+            return null;
+        }
+
+        const tryGet = async (constraints: MediaStreamConstraints) => {
+            try {
+                return await navigator.mediaDevices.getUserMedia(constraints);
+            } catch {
+                return null;
+            }
+        };
+
+        // 1) try full A/V, 2) audio only, 3) video only
+        let stream =
+            (await tryGet({ audio: true, video: true })) ||
+            (await tryGet({ audio: true, video: false })) ||
+            (await tryGet({ audio: false, video: true }));
+
+        if (!stream) {
+            setHasAudio(false);
+            setHasVideo(false);
+            setMediaError('No camera or microphone available — joining in receive-only mode.');
+            return null;
+        }
+
         localStreamRef.current = stream;
+        const audioOk = stream.getAudioTracks().length > 0;
+        const videoOk = stream.getVideoTracks().length > 0;
+        setHasAudio(audioOk);
+        setHasVideo(videoOk);
+        setMediaError(audioOk && videoOk ? null : 'Some devices were unavailable — continuing with what we got.');
+
         if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
         }
@@ -80,6 +119,8 @@ export default function useWebRTC() {
     const stopLocalStream = useCallback(() => {
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         localStreamRef.current = null;
+        setHasAudio(false);
+        setHasVideo(false);
         if (localVideoRef.current) localVideoRef.current.srcObject = null;
     }, []);
 
@@ -104,10 +145,24 @@ export default function useWebRTC() {
         (s: Socket, currentRoomId: string): RTCPeerConnection => {
             const pc = new RTCPeerConnection(ICE_SERVERS);
 
-            // Send our local tracks to the remote peer.
-            localStreamRef.current?.getTracks().forEach((track) => {
-                pc.addTrack(track, localStreamRef.current as MediaStream);
-            });
+            // Push any local tracks we DO have to the peer.
+            const stream = localStreamRef.current;
+            const localAudio = stream?.getAudioTracks()[0];
+            const localVideo = stream?.getVideoTracks()[0];
+
+            // Add audio transceiver: send+recv if we have a mic, recv-only otherwise.
+            if (localAudio && stream) {
+                pc.addTrack(localAudio, stream);
+            } else {
+                pc.addTransceiver('audio', { direction: 'recvonly' });
+            }
+
+            // Same for video.
+            if (localVideo && stream) {
+                pc.addTrack(localVideo, stream);
+            } else {
+                pc.addTransceiver('video', { direction: 'recvonly' });
+            }
 
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
@@ -147,7 +202,9 @@ export default function useWebRTC() {
 
     const joinQueue = useCallback(async () => {
         if (!isConnected) return;
-        await startLocalStream();           // ensure media is ready before we get matched
+        // Best-effort: if media fails, we still join the queue and connect in
+        // receive-only mode. Negotiation does not depend on local tracks.
+        await startLocalStream();
         setStatus('queued');
         socket.emit('join_queue');
     }, [socket, isConnected, startLocalStream]);
@@ -296,6 +353,9 @@ export default function useWebRTC() {
         // media state
         isMuted,
         isCameraOff,
+        hasAudio,
+        hasVideo,
+        mediaError,
 
         // controls
         joinQueue,
