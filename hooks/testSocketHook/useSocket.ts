@@ -1,18 +1,16 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import io, { Socket } from 'socket.io-client';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 
-
-
 let socketInstance: Socket | null = null;
 
 const getSocket = (): Socket => {
+    if (socketInstance) return socketInstance;
 
-    if(socketInstance) return socketInstance;
-
-    console.log('[useSocket] Initializing Socket.IO client...');
+    console.log('[useSocket] Initializing Socket.IO client ->', SOCKET_URL);
 
     socketInstance = io(SOCKET_URL, {
         reconnection: true,
@@ -20,30 +18,45 @@ const getSocket = (): Socket => {
         reconnectionDelayMax: 5000,
         reconnectionAttempts: 5,
         transports: ['websocket', 'polling'],
-        rejectUnauthorized: process.env.NODE_ENV === 'production' ? true : false,
     });
     socketInstance.on('connect', () => {
-        console.log('[useSocket] ✓ Connected successfully');
-        console.log('[useSocket] Socket ID:', socketInstance?.id);
+        console.log('[useSocket] ✓ Connected:', socketInstance?.id);
     });
     socketInstance.on('disconnect', (reason) => {
-        console.log('[useSocket] ✗ Disconnected. Reason:', reason);
+        console.log('[useSocket] ✗ Disconnected:', reason);
     });
     socketInstance.on('connect_error', (error) => {
-        console.error('[useSocket] ✗ Connection error:', error);
-    });
-    socketInstance.on('error', (error) => {
-        console.error('[useSocket] ✗ Socket error:', error);
+        console.error('[useSocket] ✗ Connection error:', error.message);
     });
 
     return socketInstance;
-}
-
-
+};
 
 export default function useSocket() {
-    
-    const socket = getSocket();
+    const [socket] = useState<Socket>(() => getSocket());
+    const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
+    const [socketId, setSocketId] = useState<string | undefined>(socket.id);
+
+    useEffect(() => {
+        const handleConnect = () => {
+            setIsConnected(true);
+            setSocketId(socket.id);
+        };
+        const handleDisconnect = () => {
+            setIsConnected(false);
+            setSocketId(undefined);
+        };
+
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+
+        if (!socket.connected) socket.connect();
+
+        return () => {
+            socket.off('connect', handleConnect);
+            socket.off('disconnect', handleDisconnect);
+        };
+    }, [socket]);
 
     const disconnectSocket = () => {
         if (socketInstance) {
@@ -51,12 +64,14 @@ export default function useSocket() {
             socketInstance.disconnect();
             socketInstance = null;
         }
-    }
+    };
 
     return {
         socket,
-        disconnectSocket
-    }
+        isConnected,
+        socketId,
+        disconnectSocket,
+    };
 }
 
 export type SocketEventMap = {

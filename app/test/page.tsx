@@ -4,40 +4,65 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Send, Video, VideoOff, Mic, MicOff, PhoneOff, SkipForward } from 'lucide-react';
 import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
 
+const ROOM_ID = 'test';
+
 export default function VideoCallPage() {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Array<{ id: number; text: string; sender: 'me' | 'partner'; time: string }>>([
+  const [messages, setMessages] = useState<
+    Array<{ id: number; text: string; sender: 'me' | 'partner'; time: string }>
+  >([
     { id: 1, text: 'Hey! How are you?', sender: 'partner', time: '10:30 AM' },
-    { id: 2, text: 'Hi! I\'m doing great, thanks!', sender: 'me', time: '10:31 AM' },
+    { id: 2, text: "Hi! I'm doing great, thanks!", sender: 'me', time: '10:31 AM' },
     { id: 3, text: 'What are you working on?', sender: 'partner', time: '10:32 AM' },
   ]);
 
+  // Stable userId per browser tab so the server can distinguish peers
+  const userId = useMemo(() => {
+    if (typeof window === 'undefined') return 'anon';
+    const existing = sessionStorage.getItem('testUserId');
+    if (existing) return existing;
+    const fresh = `user-${Math.random().toString(36).slice(2, 8)}`;
+    sessionStorage.setItem('testUserId', fresh);
+    return fresh;
+  }, []);
 
   const {
     localVideoRef,
     remoteVideoRef,
     isCallActive,
-    isMuted:isMutedFun,
+    isMuted,
     isCameraOff,
+    socketId,
+    users,
+    remoteUserId,
+    startLocalStream,
     startCall,
     hangupCall,
     toggleMute,
-    toggleCamera
-  } = useWebRTC("test", "userId");
+    toggleCamera,
+  } = useWebRTC(ROOM_ID, userId);
 
+  // Always show our own camera as soon as we land on the page
+  useEffect(() => {
+    startLocalStream().catch(() => undefined);
+  }, [startLocalStream]);
 
+  // The other participants in the room (excluding ourselves)
+  const partner = users.find((u) => u.socketId !== socketId);
 
-
-
-
-
-
+  // Auto-call: the peer with the lexicographically smaller socketId initiates,
+  // so only one offer is sent when two browsers meet in the same room.
+  useEffect(() => {
+    if (!partner || !socketId || isCallActive) return;
+    if (socketId < partner.socketId) {
+      console.log('[test page] Auto-calling partner', partner.socketId);
+      startCall(partner.socketId);
+    }
+  }, [partner, socketId, isCallActive, startCall]);
 
   const sendMessage = () => {
     if (message.trim()) {
@@ -61,7 +86,20 @@ export default function VideoCallPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             Video Call
           </h1>
-          <p className="text-gray-400 text-sm mt-1">Connect with random people around the world</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Room <span className="font-mono">{ROOM_ID}</span> · you are{' '}
+            <span className="font-mono">{socketId ?? 'connecting...'}</span> · partner{' '}
+            <span className="font-mono">{partner?.socketId ?? 'waiting...'}</span>
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => partner && startCall(partner.socketId)}
+              disabled={!partner || isCallActive}
+              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-md text-sm"
+            >
+              {isCallActive ? 'In call' : partner ? 'Call partner' : 'Waiting for partner...'}
+            </button>
+          </div>
         </div>
 
         {/* Video Containers */}
@@ -69,19 +107,34 @@ export default function VideoCallPage() {
           {/* Partner Video - Larger */}
           <div className="flex-1 relative bg-gray-800 rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl font-bold">S</span>
-                </div>
-                <p className="text-gray-400">Stranger's Video</p>
-                <p className="text-sm text-gray-500 mt-1">Waiting for connection...</p>
-              </div>
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
             </div>
             {/* Connection Status Badge */}
             <div className="absolute top-4 left-4 flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-green-500/20 backdrop-blur-sm border border-green-500/30 px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-green-400">Connected</span>
+              <div
+                className={`flex items-center gap-2 backdrop-blur-sm px-3 py-1.5 rounded-full ${
+                  isCallActive
+                    ? 'bg-green-500/20 border border-green-500/30'
+                    : 'bg-yellow-500/20 border border-yellow-500/30'
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full animate-pulse ${
+                    isCallActive ? 'bg-green-400' : 'bg-yellow-400'
+                  }`}
+                ></div>
+                <span
+                  className={`text-sm font-medium ${
+                    isCallActive ? 'text-green-400' : 'text-yellow-400'
+                  }`}
+                >
+                  {isCallActive ? 'Connected' : 'Waiting'}
+                </span>
               </div>
             </div>
           </div>
@@ -89,15 +142,16 @@ export default function VideoCallPage() {
           {/* My Video - Smaller */}
           <div className="h-48 relative bg-gray-800 rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-2xl font-bold">Y</span>
-                </div>
-                <p className="text-gray-400 text-sm">Your Video</p>
-              </div>
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
             </div>
             {/* Video Off Overlay */}
-            {isVideoOff && (
+            {isCameraOff && (
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
                 <VideoOff className="w-12 h-12 text-gray-400" />
               </div>
@@ -108,7 +162,7 @@ export default function VideoCallPage() {
         {/* Controls */}
         <div className="mt-6 flex items-center justify-center gap-4">
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={toggleMute}
             className={`p-4 rounded-full transition-all transform hover:scale-110 ${
               isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-700 hover:bg-gray-600'
             }`}
@@ -118,17 +172,19 @@ export default function VideoCallPage() {
           </button>
 
           <button
-            onClick={() => setIsVideoOff(!isVideoOff)}
+            onClick={toggleCamera}
             className={`p-4 rounded-full transition-all transform hover:scale-110 ${
-              isVideoOff ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-700 hover:bg-gray-600'
+              isCameraOff ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-700 hover:bg-gray-600'
             }`}
-            title={isVideoOff ? 'Turn on video' : 'Turn off video'}
+            title={isCameraOff ? 'Turn on video' : 'Turn off video'}
           >
-            {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+            {isCameraOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
           </button>
 
           <button
-            className="p-4 bg-red-500 hover:bg-red-600 rounded-full transition-all transform hover:scale-110"
+            onClick={hangupCall}
+            disabled={!isCallActive}
+            className="p-4 bg-red-500 hover:bg-red-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-full transition-all transform hover:scale-110"
             title="End Call"
           >
             <PhoneOff className="w-6 h-6" />
@@ -148,7 +204,9 @@ export default function VideoCallPage() {
         {/* Chat Header */}
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold">Chat</h2>
-          <p className="text-sm text-gray-400 mt-1">Send messages to your partner</p>
+          <p className="text-sm text-gray-400 mt-1">
+            {remoteUserId ? `Talking to ${remoteUserId}` : 'No partner yet'}
+          </p>
         </div>
 
         {/* Messages */}
@@ -160,9 +218,7 @@ export default function VideoCallPage() {
             >
               <div
                 className={`max-w-[80%] ${
-                  msg.sender === 'me'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-700 text-gray-100'
+                  msg.sender === 'me' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-100'
                 } rounded-2xl px-4 py-2.5 shadow-lg`}
               >
                 <p className="text-sm break-words">{msg.text}</p>
@@ -185,7 +241,7 @@ export default function VideoCallPage() {
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Type a message..."
               className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
             />
