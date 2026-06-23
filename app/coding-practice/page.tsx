@@ -5,8 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code2, Play, Video, VideoOff, Mic, MicOff, MessageSquare,
-  Send, Trophy, Zap, UserX, Wifi, Terminal, ScreenShare,
-  Clock, CheckCircle2, Flame, Star, MonitorStop, PhoneOff,
+  Send, Trophy, Zap, UserX, Wifi, WifiOff, Terminal, ScreenShare,  Clock, CheckCircle2, Flame, Star, MonitorStop, PhoneOff,
   RefreshCw, ChevronRight, Cpu, Eye, Globe, Shield, X,
   ChevronDown, BookOpen, Music2, Users, AlignLeft, SkipBack, SkipForward, Volume2,
 } from 'lucide-react';
@@ -19,8 +18,14 @@ import {
 } from '@/stores/codingPractice/activeStepSlice';
 import { useGetDsaQuestionsQuery, useRunCodeMutation } from '@/stores/api';
 import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
+import { RemoteCursorManager, randomCollabIdentity } from '@/lib/collabEditor';
 
 type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
+
+/** Payload relayed over the WebRTC data channel for live collaboration. */
+type CollabMessage = Record<string, unknown>;
+type SendCollab = (msg: CollabMessage) => boolean;
+type OnCollab = (handler: (msg: CollabMessage) => void) => () => void;
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -835,6 +840,7 @@ function ProblemStatement() {
 
 function CodeEditorPanel({
   codeRunState, terminalLines, onRun, onSubmit, showTerminal, onToggleTerminal, elapsed, isRecording,
+  connectionState, collabReady, sendCollab, onCollab,
 }: {
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
@@ -844,6 +850,10 @@ function CodeEditorPanel({
   onToggleTerminal: () => void;
   elapsed: number;
   isRecording: boolean;
+  connectionState: 'idle' | 'searching' | 'connected';
+  collabReady: boolean;
+  sendCollab: SendCollab;
+  onCollab: OnCollab;
 }) {
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
@@ -922,6 +932,214 @@ function CodeEditorPanel({
       return () => clearTimeout(timer);
     }
   }, [showCelebration]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Live collaboration (peer-to-peer over the WebRTC data channel)
+  //   • code edits  : full-document sync, echo-guarded
+  //   • cursor      : caret + selection with the partner's name tag
+  //   • sync toggle : on by default; pausing stops send + apply both ways
+  // ───────────────────────────────────────────────────────────────────────────
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const cursorMgrRef = useRef<RemoteCursorManager | null>(null);
+  const applyingRemoteRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const identityRef = useRef(randomCollabIdentity());
+  const editableCodeRef = useRef('');
+  const cursorThrottleRef = useRef(0);
+  const cursorTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const partnerLineRef = useRef<number | null>(null);
+
+  const [syncEnabled, setSyncEnabled] = useState(true);
+  const syncEnabledRef = useRef(true);
+  const [partner, setPartner] = useState<{ name: string; color: string } | null>(null);
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const [incomingPulse, setIncomingPulse] = useState(false);
+
+  useEffect(() => { syncEnabledRef.current = syncEnabled; }, [syncEnabled]);
+  useEffect(() => { editableCodeRef.current = editableCode; }, [editableCode]);
+
+  const isCollabLive = connectionState === 'connected' && collabReady;
+
+  const flashIncoming = useCallback(() => {
+    setIncomingPulse(true);
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    pulseTimerRef.current = setTimeout(() => setIncomingPulse(false), 450);
+  }, []);
+
+  const markPartnerTyping = useCallback(() => {
+    setPartnerTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => setPartnerTyping(false), 1200);
+  }, []);
+
+  // Apply a full-document edit coming from the partner without echoing it back
+  // and while preserving our own caret/selection as best as possible.
+  const applyRemoteCode = useCallback((code: string) => {
+    const editor = editorRef.current;
+    if (!editor) { setEditableCode(code); return; }
+    const model = editor.getModel?.();
+    if (!model || model.getValue() === code) return;
+    applyingRemoteRef.current = true;
+    try {
+      const selections = editor.getSelections?.();
+      editor.executeEdits('collab-remote', [{
+        range: model.getFullModelRange(),
+        text: code,
+        forceMoveMarkers: true,
+      }]);
+      if (selections) editor.setSelections(selections);
+    } finally {
+      applyingRemoteRef.current = false;
+    }
+  }, []);
+
+  const applyRemoteCursor = useCallback((msg: CollabMessage) => {
+    const mgr = cursorMgrRef.current;
+    if (!mgr) return;
+    const pos = msg.pos as { lineNumber: number; column: number } | null | undefined;
+    partnerLineRef.current = pos?.lineNumber ?? null;
+    mgr.update({
+      position: pos ?? null,
+      selection: (msg.sel as any) ?? null,
+      name: (msg.name as string) ?? 'Partner',
+      color: (msg.color as string) ?? '#f59e0b',
+    });
+  }, []);
+
+  const sendHello = useCallback((reply: boolean) => {
+    sendCollab({
+      t: 'hello',
+      reply,
+      name: identityRef.current.name,
+      color: identityRef.current.color,
+      code: editableCodeRef.current,
+    });
+  }, [sendCollab]);
+
+  // Subscribe to inbound collab messages for the lifetime of the panel.
+  useEffect(() => {
+    const off = onCollab((msg) => {
+      const type = msg?.t;
+      if (type === 'hello') {
+        setPartner({ name: (msg.name as string) ?? 'Partner', color: (msg.color as string) ?? '#f59e0b' });
+        // Adopt partner code only if we haven't started editing locally.
+        if (syncEnabledRef.current && !dirtyRef.current && typeof msg.code === 'string') {
+          applyRemoteCode(msg.code as string);
+        }
+        if (!msg.reply) sendHello(true);
+        return;
+      }
+      if (type === 'code') {
+        if (!syncEnabledRef.current) return;
+        if (typeof msg.code === 'string') applyRemoteCode(msg.code as string);
+        flashIncoming();
+        markPartnerTyping();
+        return;
+      }
+      if (type === 'cursor') {
+        if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
+        applyRemoteCursor(msg);
+        return;
+      }
+    });
+    return off;
+  }, [onCollab, applyRemoteCode, applyRemoteCursor, sendHello, flashIncoming, markPartnerTyping]);
+
+  // Greet (and reset) whenever the data channel opens / closes.
+  useEffect(() => {
+    if (isCollabLive) {
+      sendHello(false);
+    } else {
+      setPartner(null);
+      setPartnerTyping(false);
+      partnerLineRef.current = null;
+      cursorMgrRef.current?.clear();
+    }
+  }, [isCollabLive, sendHello]);
+
+  const sendCursor = useCallback(() => {
+    if (!syncEnabledRef.current) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    const pos = editor.getPosition?.();
+    const sel = editor.getSelection?.();
+    sendCollab({
+      t: 'cursor',
+      name: identityRef.current.name,
+      color: identityRef.current.color,
+      pos: pos ? { lineNumber: pos.lineNumber, column: pos.column } : null,
+      sel: sel ? {
+        startLineNumber: sel.startLineNumber, startColumn: sel.startColumn,
+        endLineNumber: sel.endLineNumber, endColumn: sel.endColumn,
+      } : null,
+    });
+  }, [sendCollab]);
+
+  // Throttled cursor publisher (with a trailing send so the final resting
+  // position is always delivered).
+  const scheduleCursor = useCallback(() => {
+    const now = Date.now();
+    if (cursorTrailingRef.current) clearTimeout(cursorTrailingRef.current);
+    if (now - cursorThrottleRef.current >= 60) {
+      cursorThrottleRef.current = now;
+      sendCursor();
+    } else {
+      cursorTrailingRef.current = setTimeout(() => {
+        cursorThrottleRef.current = Date.now();
+        sendCursor();
+      }, 60);
+    }
+  }, [sendCursor]);
+
+  const handleEditorMount = useCallback((editor: any, monaco: any) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    cursorMgrRef.current = new RemoteCursorManager(editor, monaco);
+    editor.onDidChangeCursorPosition?.(scheduleCursor);
+    editor.onDidChangeCursorSelection?.(scheduleCursor);
+  }, [scheduleCursor]);
+
+  const handleEditorChange = useCallback((value: string | undefined) => {
+    const code = value ?? '';
+    setEditableCode(code);
+    if (applyingRemoteRef.current) return;  // remote-applied edit — never echo
+    dirtyRef.current = true;
+    if (syncEnabledRef.current) {
+      sendCollab({ t: 'code', code, name: identityRef.current.name });
+    }
+  }, [sendCollab]);
+
+  const handleToggleSync = useCallback(() => {
+    setSyncEnabled((prev) => {
+      const next = !prev;
+      if (next) {
+        // Re-syncing: push our current doc + cursor so we converge again.
+        dirtyRef.current = true;
+        sendCollab({ t: 'code', code: editableCodeRef.current, name: identityRef.current.name });
+        sendCursor();
+      } else {
+        cursorMgrRef.current?.clear();
+      }
+      return next;
+    });
+  }, [sendCollab, sendCursor]);
+
+  const jumpToPartner = useCallback(() => {
+    const line = partnerLineRef.current;
+    const editor = editorRef.current;
+    if (line && editor) editor.revealLineInCenter?.(line);
+  }, []);
+
+  // Cleanup on unmount.
+  useEffect(() => () => {
+    cursorMgrRef.current?.dispose();
+    if (cursorTrailingRef.current) clearTimeout(cursorTrailingRef.current);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+  }, []);
 
   return (
     <div
@@ -1030,9 +1248,81 @@ function CodeEditorPanel({
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold" style={{ background: 'rgba(192,132,252,0.1)', color: '#c084fc' }}>
-          <Eye size={10} />
-          Syncing
+        {/* ── Live collaboration controls ─────────────────────────────── */}
+        <div className="flex items-center gap-1.5">
+          {/* Partner presence pill */}
+          {partner && isCollabLive && (
+            <motion.button
+              onClick={jumpToPartner}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold"
+              style={{ background: `${partner.color}1f`, border: `1px solid ${partner.color}55`, color: partner.color }}
+              title={`Jump to ${partner.name}'s cursor`}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ background: partner.color, boxShadow: `0 0 6px ${partner.color}` }}
+              />
+              <span className="max-w-[90px] truncate">{partner.name}</span>
+              <AnimatePresence>
+                {partnerTyping && (
+                  <motion.span
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="text-[9px] opacity-80 overflow-hidden whitespace-nowrap"
+                  >
+                    typing…
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          )}
+
+          {/* Sync toggle — on by default */}
+          <motion.button
+            onClick={handleToggleSync}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            disabled={!isCollabLive}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold"
+            style={{
+              background: !isCollabLive
+                ? 'rgba(148,163,184,0.08)'
+                : syncEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+              border: `1px solid ${!isCollabLive ? 'rgba(148,163,184,0.2)' : syncEnabled ? 'rgba(74,222,128,0.35)' : 'rgba(248,113,113,0.35)'}`,
+              color: !isCollabLive ? 'rgba(148,163,184,0.7)' : syncEnabled ? '#4ade80' : '#f87171',
+              cursor: isCollabLive ? 'pointer' : 'not-allowed',
+            }}
+            title={
+              !isCollabLive ? 'Connect with a partner to start live sync'
+                : syncEnabled ? 'Live sync on — click to pause' : 'Live sync paused — click to resume'
+            }
+          >
+            {!isCollabLive ? (
+              <>
+                <Eye size={11} />
+                <span>Solo</span>
+              </>
+            ) : syncEnabled ? (
+              <>
+                <motion.span
+                  className="inline-block"
+                  animate={incomingPulse ? { scale: [1, 1.5, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Wifi size={11} />
+                </motion.span>
+                <span>Syncing</span>
+              </>
+            ) : (
+              <>
+                <WifiOff size={11} />
+                <span>Paused</span>
+              </>
+            )}
+          </motion.button>
         </div>
       </div>
 
@@ -1042,7 +1332,8 @@ function CodeEditorPanel({
           height="100%"
           language={getMonacoLanguage(language)}
           value={editableCode}
-          onChange={(value) => setEditableCode(value || '')}
+          onChange={handleEditorChange}
+          onMount={handleEditorMount}
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
@@ -2367,7 +2658,7 @@ function CodeSummitAnimation({ onClose }: { onClose: () => void }) {
 function CollaborationArena({
   isAnonymous, isMuted, isCameraOff, isRecording, codeRunState, terminalLines, chatMessages, chatInput,
   onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, onSkip, currentStep,
-  localStream, remoteStream, connectionState, onConnect,
+  localStream, remoteStream, connectionState, onConnect, collabReady, sendCollab, onCollab,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean;
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
@@ -2378,6 +2669,7 @@ function CollaborationArena({
   localStream: MediaStream | null; remoteStream: MediaStream | null;
   connectionState: 'idle' | 'searching' | 'connected';
   onConnect: () => void;
+  collabReady: boolean; sendCollab: SendCollab; onCollab: OnCollab;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
@@ -2407,6 +2699,10 @@ function CollaborationArena({
           onToggleTerminal={() => setShowTerminal(!showTerminal)}
           elapsed={elapsed}
           isRecording={isRecording}
+          connectionState={connectionState}
+          collabReady={collabReady}
+          sendCollab={sendCollab}
+          onCollab={onCollab}
         />
       </div>
 
@@ -2626,7 +2922,10 @@ function CodingPracticeContent() {
     toggleMic,
     toggleCamera,
     sendChat,
-    skip
+    skip,
+    collabReady,
+    sendCollab,
+    onCollab,
   } = useWebRTC();
 
   // Map hook status -> the page's three-stage connectionState machine.
@@ -2808,6 +3107,9 @@ function CodingPracticeContent() {
             remoteStream={remoteStream}
             connectionState={connectionState}
             onConnect={() => handleConnect(true)}
+            collabReady={collabReady}
+            sendCollab={sendCollab}
+            onCollab={onCollab}
           />
         </motion.div>
       </div>

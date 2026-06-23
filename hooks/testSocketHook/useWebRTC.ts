@@ -50,6 +50,13 @@ export type ChatMessage = {
     timestamp: number;
 };
 
+/**
+ * Any JSON-serialisable payload sent over the WebRTC data channel for
+ * live collaboration (code sync, cursors, language, etc). The shape is owned
+ * by the consumer — the hook only relays it.
+ */
+export type CollabMessage = Record<string, unknown>;
+
 export default function useWebRTC() {
     const { socket, isConnected, socketId } = useSocket();
 
@@ -61,6 +68,14 @@ export default function useWebRTC() {
     const roomIdRef = useRef<string | null>(null);
     // ICE candidates can arrive before setRemoteDescription resolves — buffer them.
     const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+
+    // ---- Live collaboration data channel ----
+    // A single ordered RTCDataChannel carries code edits + cursor updates
+    // directly peer-to-peer (no socket round-trip). Consumers subscribe via
+    // `onCollab` and publish via `sendCollab`.
+    const dataChannelRef = useRef<RTCDataChannel | null>(null);
+    const collabHandlersRef = useRef<Set<(msg: CollabMessage) => void>>(new Set());
+    const [collabReady, setCollabReady] = useState(false);
 
     const [status, setStatus] = useState<MatchStatus>('idle');
     const [roomId, setRoomId] = useState<string | null>(null);
@@ -144,12 +159,41 @@ export default function useWebRTC() {
     // Peer connection lifecycle
     // ------------------------------------------------------------------
 
+    // Wire an RTCDataChannel into the collab pub/sub. Used by both the
+    // initiator (who calls createDataChannel) and the answerer (who receives
+    // it via ondatachannel).
+    const attachDataChannel = useCallback((dc: RTCDataChannel) => {
+        dataChannelRef.current = dc;
+        dc.onopen = () => setCollabReady(true);
+        dc.onclose = () => setCollabReady(false);
+        dc.onerror = () => { /* swallow — channel errors shouldn't crash the app */ };
+        dc.onmessage = (event) => {
+            let msg: CollabMessage;
+            try { msg = JSON.parse(event.data as string); } catch { return; }
+            collabHandlersRef.current.forEach((h) => {
+                try { h(msg); } catch { /* a bad subscriber must not break the loop */ }
+            });
+        };
+    }, []);
+
     const closePeer = useCallback(() => {
+        const dc = dataChannelRef.current;
+        if (dc) {
+            dc.onopen = null;
+            dc.onclose = null;
+            dc.onerror = null;
+            dc.onmessage = null;
+            try { dc.close(); } catch { /* noop */ }
+        }
+        dataChannelRef.current = null;
+        setCollabReady(false);
+
         const pc = pcRef.current;
         if (pc) {
             pc.onicecandidate = null;
             pc.ontrack = null;
             pc.onconnectionstatechange = null;
+            pc.ondatachannel = null;
             try { pc.close(); } catch { /* noop */ }
         }
         pcRef.current = null;
@@ -159,8 +203,19 @@ export default function useWebRTC() {
     }, []);
 
     const createPeer = useCallback(
-        (s: Socket, currentRoomId: string): RTCPeerConnection => {
+        (s: Socket, currentRoomId: string, isInitiator: boolean): RTCPeerConnection => {
             const pc = new RTCPeerConnection(ICE_SERVERS);
+
+            // Collaboration data channel. The initiator creates it; the
+            // answerer picks it up through ondatachannel.
+            if (isInitiator) {
+                const dc = pc.createDataChannel('collab', { ordered: true });
+                attachDataChannel(dc);
+            } else {
+                pc.ondatachannel = (event) => {
+                    if (event.channel.label === 'collab') attachDataChannel(event.channel);
+                };
+            }
 
             // Push any local tracks we DO have to the peer.
             const stream = localStreamRef.current;
@@ -203,7 +258,7 @@ export default function useWebRTC() {
             pcRef.current = pc;
             return pc;
         },
-        []
+        [attachDataChannel]
     );
 
     const flushPendingCandidates = useCallback(async () => {
@@ -289,8 +344,36 @@ export default function useWebRTC() {
     );
 
     // ------------------------------------------------------------------
-    // Socket event wiring
+    // Live collaboration channel (peer-to-peer, no socket)
     // ------------------------------------------------------------------
+
+    /**
+     * Publish a collaboration message (code edit, cursor move, …) to the
+     * partner over the WebRTC data channel. Returns false if the channel
+     * isn't open yet.
+     */
+    const sendCollab = useCallback((msg: CollabMessage): boolean => {
+        const dc = dataChannelRef.current;
+        if (!dc || dc.readyState !== 'open') return false;
+        try {
+            dc.send(JSON.stringify(msg));
+            return true;
+        } catch {
+            return false;
+        }
+    }, []);
+
+    /**
+     * Subscribe to incoming collaboration messages. Returns an unsubscribe
+     * function. Handlers fire imperatively (no re-render) so high-frequency
+     * edits stay cheap.
+     */
+    const onCollab = useCallback((handler: (msg: CollabMessage) => void) => {
+        collabHandlersRef.current.add(handler);
+        return () => {
+            collabHandlersRef.current.delete(handler);
+        };
+    }, []);
 
     useEffect(() => {
         if (!socket) return;
@@ -306,7 +389,7 @@ export default function useWebRTC() {
             // Make sure we have media before negotiation.
             await startLocalStream();
             closePeer();                 // safety: drop any stale peer
-            const pc = createPeer(socket, rid);
+            const pc = createPeer(socket, rid, isInitiator);
 
             if (isInitiator) {
                 const offer = await pc.createOffer();
@@ -320,7 +403,7 @@ export default function useWebRTC() {
             let pc = pcRef.current;
             if (!pc) {
                 await startLocalStream();
-                pc = createPeer(socket, rid);
+                pc = createPeer(socket, rid, false);
             }
             await pc.setRemoteDescription(sdp);
             await flushPendingCandidates();
@@ -428,6 +511,11 @@ export default function useWebRTC() {
         // chat
         messages,
         sendChat,
+
+        // live collaboration (peer-to-peer data channel)
+        collabReady,
+        sendCollab,
+        onCollab,
 
         // controls
         joinQueue,
