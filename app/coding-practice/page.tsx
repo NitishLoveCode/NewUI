@@ -1096,6 +1096,16 @@ function CodeEditorPanel({
     setShowCelebration(true);
   }, []);
 
+  // Open / close the language dropdown locally and mirror it to the partner so
+  // they see the same options pop up when one side clicks the selector.
+  const toggleLangMenu = () => {
+    const next = !showLangMenu;
+    setShowLangMenu(next);
+    if (syncEnabledRef.current) {
+      sendCollab({ t: 'lang-menu', open: next, name: identityRef.current.name });
+    }
+  };
+
   // Subscribe to inbound collab messages for the lifetime of the panel.
   useEffect(() => {
     const off = onCollab((msg) => {
@@ -1116,6 +1126,13 @@ function CodeEditorPanel({
         if (!syncEnabledRef.current) return;
         if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
         if (typeof msg.lang === 'string') applyRemoteLanguage(msg.lang as SupportedLanguage);
+        return;
+      }
+      if (type === 'lang-menu') {
+        // Mirror the partner opening / closing the language selector.
+        if (!syncEnabledRef.current) return;
+        if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
+        setShowLangMenu(Boolean(msg.open));
         return;
       }
       if (type === 'code') {
@@ -1331,7 +1348,7 @@ function CodeEditorPanel({
         {/* Language selector */}
         <div className="relative">
           <motion.button
-            onClick={() => setShowLangMenu(!showLangMenu)}
+            onClick={toggleLangMenu}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
