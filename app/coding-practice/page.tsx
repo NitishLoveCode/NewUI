@@ -18,7 +18,7 @@ import {
   type GameQuestionStep,
 } from '@/stores/codingPractice/activeStepSlice';
 import { useGetDsaQuestionsQuery, useRunCodeMutation } from '@/stores/api';
-import { useCollaboration } from '@/lib/useCollaboration';
+import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
 
 type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
 
@@ -1193,7 +1193,7 @@ function CodeEditorPanel({
 // ─── Chat Drawer ──────────────────────────────────────────────────────────────
 
 function ChatDrawer({
-  isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect,
+  isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect, onSkip,
   codeRunState, terminalLines, onRun, onSubmit, currentStep, localVideoRef, remoteVideoRef,
 }: {
   isOpen: boolean;
@@ -1209,6 +1209,7 @@ function ChatDrawer({
   onCamera: () => void;
   onRecording: () => void;
   onDisconnect: () => void;
+  onSkip: () => void;
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
   onRun: (payload: { code: string; language: SupportedLanguage }) => void;
@@ -1421,6 +1422,23 @@ function ChatDrawer({
                           title={isRecording ? 'Stop Recording' : 'Start Recording'}
                         >
                           {isRecording ? <MonitorStop size={12} /> : <ScreenShare size={12} />}
+                        </motion.button>
+
+                        <motion.button
+                          onClick={onSkip}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.85 }}
+                          className="flex items-center justify-center rounded-lg text-xs font-bold"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: 'linear-gradient(135deg, rgba(251,191,36,0.6), rgba(217,119,6,0.4))',
+                            border: '1px solid rgba(251,191,36,0.8)',
+                            color: '#fcd34d',
+                          }}
+                          title="Skip — find a new partner"
+                        >
+                          <SkipForward size={12} />
                         </motion.button>
 
                         <motion.button
@@ -1867,23 +1885,26 @@ function ChatDrawer({
 
 // ─── Video Box Component ──────────────────────────────────────────────────────
 
-const VideoBox = React.memo(({ 
-  isYou, 
-  color, 
-  videoRef, 
-  isCameraOff, 
-  isAnonymous 
-}: { 
-  isYou: boolean; 
-  color: string; 
-  videoRef?: React.RefObject<HTMLVideoElement | null>; 
-  isCameraOff: boolean; 
-  isAnonymous: boolean; 
+const VideoBox = React.memo(({
+  isYou,
+  color,
+  videoRef,
+  isCameraOff,
+  isAnonymous,
+  partnerStatus,
+}: {
+  isYou: boolean;
+  color: string;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  isCameraOff: boolean;
+  isAnonymous: boolean;
+  /** Only meaningful when !isYou. Drives the buffering overlay. */
+  partnerStatus?: 'idle' | 'searching' | 'connected';
 }) => {
-  // Log when VideoBox renders
-  useEffect(() => {
-    console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} VideoBox mounted, ref exists:`, !!videoRef?.current, 'isCameraOff:', isCameraOff);
-  }, [isYou, videoRef?.current, isCameraOff]);
+  // Show the buffering overlay on the partner tile until we are matched.
+  const isBuffering = !isYou && partnerStatus !== 'connected';
+  const bufferLabel =
+    partnerStatus === 'searching' ? 'Finding a partner…' : 'Press Connect to start';
 
   return (
   <div
@@ -1903,41 +1924,36 @@ const VideoBox = React.memo(({
         playsInline
         muted={isYou}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ 
+        style={{
           display: (isCameraOff && isYou) ? 'none' : 'block',
           backgroundColor: '#000',
-          zIndex: 1
-        }}
-        onLoadedMetadata={(e) => {
-          const video = e.currentTarget;
-          const computedStyle = window.getComputedStyle(video);
-          console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video metadata loaded`);
-          console.log('  - videoWidth:', video.videoWidth, 'videoHeight:', video.videoHeight);
-          console.log('  - display:', computedStyle.display, 'visibility:', computedStyle.visibility, 'opacity:', computedStyle.opacity);
-          console.log('  - paused:', video.paused, 'readyState:', video.readyState);
-        }}
-        onPlay={() => {
-          console.log(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video started playing`);
-        }}
-        onError={(e) => {
-          console.error(`[VideoBox] ${isYou ? 'Local' : 'Remote'} video error:`, e);
+          zIndex: 1,
         }}
       />
     )}
-    {((isCameraOff && isYou) || !videoRef) && (
+
+    {/* Partner-side: cool buffering overlay while idle / searching */}
+    {isBuffering && (
+      <BufferingOverlay color={color} label={bufferLabel} active={partnerStatus === 'searching'} />
+    )}
+
+    {/* Local-side: camera-off placeholder */}
+    {isCameraOff && isYou && (
       <div className="flex flex-col items-center gap-1" style={{ zIndex: 2, position: 'relative' }}>
-        <div className="text-3xl">{isYou ? '👨‍💻' : (isAnonymous ? '👤' : '🧑‍💻')}</div>
-        {isCameraOff && isYou && <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>}
-        {!videoRef && !isYou && <div className="text-[10px] text-gray-400">Waiting...</div>}
+        <div className="text-3xl">👨‍💻</div>
+        <div className="text-[10px] text-gray-400 text-center max-w-[90%]">Camera off</div>
       </div>
     )}
+
     <div
       className="absolute bottom-0 left-0 right-0 px-2 py-1 text-center text-xs font-semibold"
       style={{ background: 'rgba(0,0,0,0.75)', color, zIndex: 3 }}
     >
-      {isYou ? 'You' : 'Partner'}
+      {isYou ? 'You' : ''}
     </div>
-    {!isYou && (
+
+    {/* Live dot on partner tile (only when actually connected) */}
+    {!isYou && partnerStatus === 'connected' && (
       <motion.div
         className="absolute top-2 right-2 w-2 h-2 rounded-full"
         style={{ background: '#4ade80', zIndex: 3 }}
@@ -1951,15 +1967,153 @@ const VideoBox = React.memo(({
 
 VideoBox.displayName = 'VideoBox';
 
+// ─── Buffering Overlay (partner tile while idle / searching) ───────────────
+
+const BufferingOverlay = React.memo(({
+  color,
+  label,
+  active,
+}: {
+  color: string;
+  label: string;
+  active: boolean;
+}) => {
+  return (
+    <div
+      className="absolute inset-0 flex items-center justify-center overflow-hidden"
+      style={{ zIndex: 2 }}
+    >
+      {/* Animated gradient sheen sweeping across the tile */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(115deg, transparent 30%, ${color}26 50%, transparent 70%)`,
+          filter: 'blur(8px)',
+        }}
+        animate={{ x: ['-120%', '120%'] }}
+        transition={{ duration: active ? 1.8 : 3.4, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Concentric rings pulsing outward */}
+      <div className="relative flex items-center justify-center" style={{ width: 60, height: 60 }}>
+        {[0, 0.6, 1.2].map((delay, i) => (
+          <motion.span
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: 14,
+              height: 14,
+              border: `1.5px solid ${color}`,
+              boxShadow: `0 0 12px ${color}80`,
+            }}
+            animate={
+              active
+                ? { scale: [1, 3.8], opacity: [0.85, 0] }
+                : { scale: [1, 1.6, 1], opacity: [0.35, 0.6, 0.35] }
+            }
+            transition={{
+              duration: active ? 1.8 : 2.4,
+              delay,
+              repeat: Infinity,
+              ease: 'easeOut',
+            }}
+          />
+        ))}
+
+        {/* Orbiting satellite dots — each wrapper rotates and the dot is
+            offset, producing a clean circular orbit around the core. */}
+        {active &&
+          [0, 1, 2].map((i) => (
+            <motion.div
+              key={`orbit-${i}`}
+              className="absolute"
+              style={{
+                width: 60,
+                height: 60,
+                top: 0,
+                left: 0,
+                transformOrigin: '50% 50%',
+              }}
+              animate={{ rotate: 360 }}
+              transition={{
+                duration: 1.8,
+                repeat: Infinity,
+                ease: 'linear',
+                delay: i * 0.6,
+              }}
+            >
+              <span
+                className="absolute rounded-full"
+                style={{
+                  width: 5,
+                  height: 5,
+                  background: color,
+                  boxShadow: `0 0 8px ${color}`,
+                  top: -2,
+                  left: '50%',
+                  marginLeft: -2.5,
+                }}
+              />
+            </motion.div>
+          ))}
+
+        {/* Core dot */}
+        <motion.span
+          className="absolute rounded-full"
+          style={{
+            width: 8,
+            height: 8,
+            background: color,
+            boxShadow: `0 0 14px ${color}`,
+          }}
+          animate={{ scale: [1, 1.35, 1], opacity: [0.9, 1, 0.9] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* Label */}
+      <div
+        className="absolute left-0 right-0 text-center"
+        style={{ bottom: 22 }}
+      >
+        <span
+          className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full"
+          style={{
+            background: 'rgba(0,0,0,0.55)',
+            color,
+            border: `0.5px solid ${color}55`,
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {active && (
+            <motion.span
+              className="inline-block mr-1"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            >
+              •
+            </motion.span>
+          )}
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+BufferingOverlay.displayName = 'BufferingOverlay';
+
 // ─── Video Call Bar ───────────────────────────────────────────────────────────
 
 function VideoCallBar({
-  isAnonymous, isMuted, isCameraOff, isRecording, elapsed, onMute, onCamera, onRecording, onDisconnect,
-  localVideoRef, remoteVideoRef,
+  isAnonymous, isMuted, isCameraOff, isRecording, elapsed, onMute, onCamera, onRecording, onDisconnect, onSkip,
+  localVideoRef, remoteVideoRef, connectionState, onConnect,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean; elapsed: number;
-  onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void;
+  onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void; onSkip: () => void;
   localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  connectionState: 'idle' | 'searching' | 'connected';
+  onConnect: () => void;
 }) {
   const CtrlBtn = ({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: React.ReactNode; label: string }) => (
     <motion.button
@@ -1978,7 +2132,7 @@ function VideoCallBar({
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-1.5 w-full">
       <div className="flex gap-1.5 w-full">
         <VideoBox isYou color="#7c3aed" videoRef={localVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
-        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
+        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} partnerStatus={connectionState} />
       </div>
 
       <div className="flex items-center gap-1 w-full">
@@ -1986,16 +2140,65 @@ function VideoCallBar({
         <CtrlBtn onClick={onCamera}    color={isCameraOff? '#f87171' : '#22d3ee'} icon={isCameraOff? <VideoOff size={13} />  : <Video size={13} />}       label="Cam"  />
         <CtrlBtn onClick={onRecording} color={isRecording? '#f97316' : '#c084fc'} icon={isRecording? <MonitorStop size={13} />: <ScreenShare size={13} />} label="Rec"  />
 
-        <motion.button
-          onClick={onDisconnect}
-          whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(248,113,113,0.35)' }}
-          whileTap={{ scale: 0.92 }}
-          className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
-          style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717128' }}
-        >
-          <PhoneOff size={10} />
-          <span className="hidden sm:inline text-[9px]">End</span>
-        </motion.button>
+        {/* Connect / Cancel / End — the action morphs with connectionState */}
+        {connectionState === 'idle' ? (
+          <motion.button
+            onClick={onConnect}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(74,222,128,0.4)' }}
+            whileTap={{ scale: 0.92 }}
+            className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
+            style={{ background: 'linear-gradient(135deg, #14532d, #166534)', color: '#86efac', border: '0.5px solid #4ade8044' }}
+            title="Find a partner"
+          >
+            <Video size={10} />
+            <span className="hidden sm:inline text-[9px]">Connect</span>
+          </motion.button>
+        ) : connectionState === 'searching' ? (
+          <motion.button
+            onClick={onDisconnect}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.92 }}
+            className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
+            style={{ background: 'linear-gradient(135deg, #78350f, #92400e)', color: '#fcd34d', border: '0.5px solid #fbbf2444' }}
+            title="Stop searching"
+          >
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+              className="inline-block"
+            >
+              <RefreshCw size={10} />
+            </motion.span>
+            <span className="hidden sm:inline text-[9px]">Searching…</span>
+          </motion.button>
+        ) : (
+          <>
+            {/* Skip — disconnect from current partner & jump to next in queue */}
+            <motion.button
+              onClick={onSkip}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(251,191,36,0.35)' }}
+              whileTap={{ scale: 0.92 }}
+              className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
+              style={{ background: 'linear-gradient(135deg, #78350f, #92400e)', color: '#fcd34d', border: '0.5px solid #fbbf2444' }}
+              title="Skip to a new partner"
+            >
+              <SkipForward size={10} />
+              <span className="hidden sm:inline text-[9px]">Skip</span>
+            </motion.button>
+
+            <motion.button
+              onClick={onDisconnect}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(248,113,113,0.35)' }}
+              whileTap={{ scale: 0.92 }}
+              className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs font-bold"
+              style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#fca5a5', border: '0.5px solid #f8717128' }}
+              title="End call"
+            >
+              <PhoneOff size={10} />
+              <span className="hidden sm:inline text-[9px]">End</span>
+            </motion.button>
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -2106,16 +2309,18 @@ function CodeSummitAnimation({ onClose }: { onClose: () => void }) {
 
 function CollaborationArena({
   isAnonymous, isMuted, isCameraOff, isRecording, codeRunState, terminalLines, chatMessages, chatInput,
-  onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, currentStep,
-  localVideoRef, remoteVideoRef,
+  onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, onSkip, currentStep,
+  localVideoRef, remoteVideoRef, connectionState, onConnect,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean;
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
   chatMessages: typeof INITIAL_CHAT; chatInput: string;
   onMute: () => void; onCamera: () => void; onRecording: () => void;
   onRunCode: (payload: { code: string; language: SupportedLanguage }) => void; onSubmit: () => void; onSendChat: () => void;
-  onChatInput: (v: string) => void; onDisconnect: () => void; currentStep: number;
+  onChatInput: (v: string) => void; onDisconnect: () => void; onSkip: () => void; currentStep: number;
   localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  connectionState: 'idle' | 'searching' | 'connected';
+  onConnect: () => void;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
@@ -2162,8 +2367,11 @@ function CollaborationArena({
           onCamera={onCamera}
           onRecording={onRecording}
           onDisconnect={onDisconnect}
+          onSkip={onSkip}
           localVideoRef={localVideoRef}
           remoteVideoRef={remoteVideoRef}
+          connectionState={connectionState}
+          onConnect={onConnect}
         />
 
         <div className="flex gap-2 w-full relative">
@@ -2293,6 +2501,7 @@ function CollaborationArena({
         onCamera={onCamera}
         onRecording={onRecording}
         onDisconnect={onDisconnect}
+        onSkip={onSkip}
         codeRunState={codeRunState}
         terminalLines={terminalLines}
         onRun={onRunCode}
@@ -2329,227 +2538,84 @@ function CodingPracticeContent() {
   const currentStep = activeProblemNumber ?? 0;
   const [connectionState, setConnectionState] = useState<'idle' | 'searching' | 'connected'>('idle');
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [codeRunState, setCodeRunState] = useState<'idle' | 'running' | 'success'>('idle');
   const [terminalLines, setTerminalLines] = useState<typeof TERMINAL_LINES>([]);
   const [runCodeRequest] = useRunCodeMutation();
   const [showSummit, setShowSummit] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState(INITIAL_CHAT);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Video refs and stream state
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  // ---------------------------------------------------------------------------
+  // Omegle-style 1-to-1 matching + WebRTC + chat. Replaces the old per-problem
+  // collaboration room + manual stream/peer management.
+  // ---------------------------------------------------------------------------
+  const {
+    localVideoRef,
+    remoteVideoRef,
+    status,
+    isMuted,
+    isCameraOff,
+    hasAudio,
+    hasVideo,
+    mediaError,
+    messages: rtcMessages,
+    joinQueue,
+    leave,
+    toggleMic,
+    toggleCamera,
+    sendChat,
+    skip
+  } = useWebRTC();
 
-  // Set local video stream when both video ref and stream are available
-  // Use retry mechanism because React ref attachment might be delayed
+  // Map hook status -> the page's three-stage connectionState machine.
   useEffect(() => {
-    if (!localStream) {
-      console.log('[CodingPractice] useEffect: No stream yet');
-      return;
+    if (status === 'matched') {
+      setConnectionState('connected');
+    } else if (status === 'queued' || status === 'partner_left') {
+      setConnectionState('searching');
+    } else {
+      setConnectionState('idle');
     }
+  }, [status]);
 
-    let attempts = 0;
-    const maxAttempts = 20; // Try for 2 seconds (20 * 100ms)
-    
-    const trySetVideo = () => {
-      attempts++;
-      if (localVideoRef.current) {
-        console.log('[CodingPractice] useEffect: Setting local video srcObject after', attempts, 'attempts, tracks:', localStream.getTracks().length);
-        localVideoRef.current.srcObject = localStream;
-        localVideoRef.current.play().catch(e => console.error('[CodingPractice] Local video play error:', e));
-      } else if (attempts < maxAttempts) {
-        console.log('[CodingPractice] useEffect: Video ref not ready yet, attempt', attempts, '/', maxAttempts);
-        setTimeout(trySetVideo, 100);
-      } else {
-        console.error('[CodingPractice] useEffect: Failed to set video after', maxAttempts, 'attempts - video element never mounted');
-      }
-    };
+  // Render the chat messages produced by useWebRTC in the existing chat UI shape.
+  const chatMessages = useMemo(() => {
+    const seed = INITIAL_CHAT.filter((m) => m.me === false && rtcMessages.length === 0);
+    return [
+      ...seed,
+      ...rtcMessages.map((m, i) => ({
+        id: i + 1000,
+        user: m.from === 'me' ? 'You' : 'Stranger',
+        avatar: m.from === 'me' ? '👨‍💻' : '🧑‍💻',
+        msg: m.text,
+        time: new Date(m.timestamp).toTimeString().slice(0, 5),
+        me: m.from === 'me',
+        color: m.from === 'me' ? '#00e676' : '#22d3ee',
+      })),
+    ];
+  }, [rtcMessages]);
 
-    trySetVideo();
-  }, [localStream, connectionState]);
+  // ---------------------------------------------------------------------------
+  // Connect / disconnect handlers
+  // ---------------------------------------------------------------------------
 
-  // Collaboration hook
-  const roomId = `problem-${currentStep}`;
-  const collaboration = useCollaboration({
-    roomId,
-    userId: isAnonymous ? undefined : 'user-1',
-    username: isAnonymous ? 'Anonymous' : 'You',
-    onChatMessage: (data) => {
-      // Server now only sends to others, so all received messages are from remote users
-      const now = new Date();
-      const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      setChatMessages(prev => [...prev, {
-        id: Date.now(),
-        user: data.username || 'User',
-        avatar: '🧑‍💻',
-        msg: data.message,
-        time,
-        me: false,
-        color: '#22d3ee'
-      }]);
+  const handleConnect = useCallback(
+    (anon: boolean) => {
+      setIsAnonymous(anon);
+      setConnectionState('searching');
+      // Fire-and-forget: joinQueue resolves once media has been (attempted to be)
+      // acquired. If media fails it still proceeds in receive-only mode.
+      void joinQueue();
     },
-    onRemoteStream: (stream) => {
-      console.log('[CodingPractice] Received remote stream, setting video srcObject');
-      if (remoteVideoRef.current && stream) {
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.play().catch(e => console.error('[CodingPractice] Remote video play error:', e));
-      }
-    },
-    onConnectionError: (error) => {
-      console.error('Collaboration error:', error);
-    },
-  });
+    [joinQueue]
+  );
 
-  // Get users and socketId from collaboration hook
-  const { users, socketId } = collaboration;
-  const webrtcInitiatedRef = useRef(false);
-
-  // Initiate WebRTC connection when another user joins
-  useEffect(() => {
-    console.log('[CodingPractice] WebRTC init useEffect triggered:', {
-      connectionState,
-      hasLocalStream: !!localStream,
-      alreadyInitiated: webrtcInitiatedRef.current,
-      socketId,
-      usersCount: users.length
-    });
-
-    // Allow WebRTC initialization even without local stream (can still receive remote video)
-    if (connectionState !== 'connected' || webrtcInitiatedRef.current || !socketId) {
-      console.log('[CodingPractice] Skipping WebRTC init due to:', {
-        notConnected: connectionState !== 'connected',
-        alreadyInitiated: webrtcInitiatedRef.current,
-        noSocketId: !socketId
-      });
-      return;
-    }
-
-    console.log('[CodingPractice] Checking for peers. Users in room:', users.length, 'Our socketId:', socketId);
-
-    // When we have exactly 2 users, initiate WebRTC with the other peer
-    // We'll compare socket IDs - the one with the lexically smaller ID initiates
-    if (users.length === 2) {
-      // Sort users by socketId to determine who initiates
-      const sortedUsers = [...users].sort((a, b) => a.socketId.localeCompare(b.socketId));
-      const firstUser = sortedUsers[0];
-      const secondUser = sortedUsers[1];
-
-      console.log('[CodingPractice] Two users detected. First:', firstUser.socketId, 'Second:', secondUser.socketId);
-
-      if (socketId === firstUser.socketId) {
-        // We're the first user, so we initiate the call to the second user
-        const targetPeer = secondUser.socketId;
-        console.log('[CodingPractice] We are first user, initiating WebRTC with peer:', targetPeer);
-        console.log('[CodingPractice] Local stream available:', !!localStream);
-        webrtcInitiatedRef.current = true;
-        collaboration.initializeWebRTC(targetPeer).catch(err => {
-          console.error('[CodingPractice] Failed to initiate WebRTC with peer:', err);
-          webrtcInitiatedRef.current = false;
-        });
-      } else {
-        // We're the second user, we wait for the first user to send an offer
-        console.log('[CodingPractice] We are second user, waiting for offer from peer');
-        console.log('[CodingPractice] Local stream available:', !!localStream);
-        // Still initialize WebRTC handler without creating an offer
-        webrtcInitiatedRef.current = true;
-        collaboration.initializeWebRTC().catch(err => {
-          console.error('[CodingPractice] Failed to initialize WebRTC:', err);
-          webrtcInitiatedRef.current = false;
-        });
-      }
-    }
-  }, [users, connectionState, localStream, collaboration, socketId]);
-
-  const handleConnect = useCallback((anon: boolean) => {
-    setIsAnonymous(anon);
-    setConnectionState('searching');
-    searchTimer.current = setTimeout(async () => {
-      try {
-        console.log('[CodingPractice] Getting local stream...');
-        const stream = await collaboration.getLocalStream();
-        if (stream) {
-          console.log('[CodingPractice] Got stream with', stream.getTracks().length, 'tracks, storing in state');
-          setLocalStream(stream); // Store stream in state, useEffect will handle setting it to video element
-          
-          // Check what we actually got
-          const hasVideo = stream.getVideoTracks().length > 0;
-          const hasAudio = stream.getAudioTracks().length > 0;
-          console.log('[CodingPractice] Stream capabilities - Video:', hasVideo, 'Audio:', hasAudio);
-        } else {
-          console.warn('[CodingPractice] No camera/microphone available - proceeding in receive-only mode');
-          // Still mark camera as "off" since we don't have video
-          setIsCameraOff(true);
-          setIsMuted(true);
-        }
-        // Don't initialize WebRTC here - let the useEffect handle it when users are available
-        console.log('[CodingPractice] Waiting for WebRTC initialization...');
-        setConnectionState('connected');
-        console.log('[CodingPractice] ✓ Connected successfully, waiting for video element to mount...');
-      } catch (error) {
-        console.error('[CodingPractice] Failed to initialize:', error);
-        // Still proceed with connection even if camera/mic failed
-        setConnectionState('connected');
-        setIsCameraOff(true);
-        setIsMuted(true);
-      }
-    }, 1000);
-  }, [collaboration]);
-
-  const handleCameraToggle = useCallback(() => {
-    setIsCameraOff(prev => {
-      const newState = !prev;
-      console.log('[CodingPractice] Toggling camera:', newState ? 'OFF' : 'ON');
-      
-      // Enable/disable video track in the stream
-      if (localStream) {
-        const videoTracks = localStream.getVideoTracks();
-        console.log('[CodingPractice] Found', videoTracks.length, 'video tracks');
-        if (videoTracks.length > 0) {
-          videoTracks.forEach(track => {
-            track.enabled = !newState;
-            console.log('[CodingPractice] Video track enabled:', track.enabled);
-          });
-        } else {
-          console.warn('[CodingPractice] No video tracks available - camera may not be present');
-        }
-      } else {
-        console.warn('[CodingPractice] No local stream available - camera not initialized');
-      }
-      
-      return newState;
-    });
-  }, [localStream]);
-
-  const handleMuteToggle = useCallback(() => {
-    setIsMuted(prev => {
-      const newState = !prev;
-      console.log('[CodingPractice] Toggling audio:', newState ? 'MUTED' : 'UNMUTED');
-      
-      // Enable/disable audio track in the stream
-      if (localStream) {
-        const audioTracks = localStream.getAudioTracks();
-        console.log('[CodingPractice] Found', audioTracks.length, 'audio tracks');
-        if (audioTracks.length > 0) {
-          audioTracks.forEach(track => {
-            track.enabled = !newState;
-            console.log('[CodingPractice] Audio track enabled:', track.enabled);
-          });
-        } else {
-          console.warn('[CodingPractice] No audio tracks available - microphone may not be present');
-        }
-      } else {
-        console.warn('[CodingPractice] No local stream available - microphone not initialized');
-      }
-      
-      return newState;
-    });
-  }, [localStream]);
+  const handleCancelSearch = useCallback(() => {
+    leave();
+    setConnectionState('idle');
+  }, [leave]);
 
   const handleRunCode = useCallback(async (payload: { code: string; language: SupportedLanguage }) => {
     if (codeRunState === 'running') return;
@@ -2609,22 +2675,20 @@ function CodingPracticeContent() {
   const handleSubmit = useCallback(() => { setShowSummit(true); }, []);
 
   const handleSendChat = useCallback(() => {
-    if (!chatInput.trim()) return;
-    const now = new Date();
-    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    setChatMessages(prev => [...prev, { id: Date.now(), user: 'You', avatar: '👨‍💻', msg: chatInput.trim(), time, me: true, color: '#00e676' }]);
-    collaboration.sendChatMessage(chatInput.trim());
-    setChatInput('');
-  }, [chatInput, collaboration]);
+    const text = chatInput.trim();
+    if (!text) return;
+    if (sendChat(text)) {
+      setChatInput('');
+    }
+  }, [chatInput, sendChat]);
 
   const handleDisconnect = useCallback(() => {
+    leave();
     setConnectionState('idle');
     setTerminalLines([]);
     setCodeRunState('idle');
     if (runInterval.current) clearInterval(runInterval.current);
-    collaboration.endCall();
-    collaboration.cleanup();
-  }, [collaboration]);
+  }, [leave]);
 
   useEffect(() => {
     return () => {
@@ -2650,52 +2714,42 @@ function CodingPracticeContent() {
         padding: '0.75rem',
       }}
     >
-      {connectionState !== 'connected' && (
-        <div className="mb-3">
-          <StepsBar />
-        </div>
-      )}
-
+      {/* Editor + video panel is always visible. The Connect / Searching /
+          End state is now surfaced inline on the video bar so the user can
+          work on the problem without being blocked on matchmaking. */}
       <div className="flex-1 overflow-auto min-h-0">
-        <AnimatePresence mode="wait">
-          {connectionState === 'idle' && (
-            <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              <ConnectionIdle onConnect={handleConnect} />
-            </motion.div>
-          )}
-
-          {connectionState === 'searching' && (
-            <motion.div key="searching" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}>
-              <ConnectionSearching isAnonymous={isAnonymous} onCancel={() => { setConnectionState('idle'); if (searchTimer.current) clearTimeout(searchTimer.current); }} />
-            </motion.div>
-          )}
-
-          {connectionState === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="h-full overflow-hidden" style={{ height: 'calc(100vh - 3.5rem - 1.5rem)' }}>
-              <CollaborationArena
-                isAnonymous={isAnonymous}
-                isMuted={isMuted}
-                isCameraOff={isCameraOff}
-                isRecording={isRecording}
-                codeRunState={codeRunState}
-                terminalLines={terminalLines}
-                chatMessages={chatMessages}
-                chatInput={chatInput}
-                currentStep={currentStep}
-                onMute={handleMuteToggle}
-                onCamera={handleCameraToggle}
-                onRecording={() => setIsRecording(r => !r)}
-                onRunCode={handleRunCode}
-                onSubmit={handleSubmit}
-                onSendChat={handleSendChat}
-                onChatInput={setChatInput}
-                onDisconnect={handleDisconnect}
-                localVideoRef={localVideoRef}
-                remoteVideoRef={remoteVideoRef}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          key="arena"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="h-full overflow-hidden"
+          style={{ height: 'calc(100vh - 3.5rem - 1.5rem)' }}
+        >
+          <CollaborationArena
+            isAnonymous={isAnonymous}
+            isMuted={isMuted}
+            isCameraOff={isCameraOff}
+            isRecording={isRecording}
+            codeRunState={codeRunState}
+            terminalLines={terminalLines}
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            currentStep={currentStep}
+            onMute={toggleMic}
+            onCamera={toggleCamera}
+            onRecording={() => setIsRecording(r => !r)}
+            onRunCode={handleRunCode}
+            onSubmit={handleSubmit}
+            onSendChat={handleSendChat}
+            onChatInput={setChatInput}
+            onDisconnect={connectionState === 'searching' ? handleCancelSearch : handleDisconnect}
+            onSkip={skip}
+            localVideoRef={localVideoRef}
+            remoteVideoRef={remoteVideoRef}
+            connectionState={connectionState}
+            onConnect={() => handleConnect(true)}
+          />
+        </motion.div>
       </div>
 
       <AnimatePresence>

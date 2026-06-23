@@ -41,6 +41,14 @@ type OfferPayload = { roomId: string; from: string; sdp: RTCSessionDescriptionIn
 type AnswerPayload = { roomId: string; from: string; sdp: RTCSessionDescriptionInit };
 type IcePayload = { roomId: string; from: string; candidate: RTCIceCandidateInit };
 type PartnerDisconnectedPayload = { roomId: string; reason: PartnerLeftReason };
+type ChatMessagePayload = { roomId: string; from: string; message: string; timestamp: number };
+
+export type ChatMessage = {
+    id: string;
+    from: 'me' | 'partner';
+    text: string;
+    timestamp: number;
+};
 
 export default function useWebRTC() {
     const { socket, isConnected, socketId } = useSocket();
@@ -59,6 +67,7 @@ export default function useWebRTC() {
     const [partnerId, setPartnerId] = useState<string | null>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     // Tracks what local devices we actually managed to acquire. Either may be
     // false if the user denied permission, has no hardware, or the device is
     // already in use by another tab. Negotiation still proceeds either way.
@@ -214,6 +223,7 @@ export default function useWebRTC() {
         roomIdRef.current = null;
         setRoomId(null);
         setPartnerId(null);
+        setMessages([]);
         setStatus('queued');
         socket.emit('skip');
     }, [socket, closePeer]);
@@ -223,6 +233,7 @@ export default function useWebRTC() {
         roomIdRef.current = null;
         setRoomId(null);
         setPartnerId(null);
+        setMessages([]);
         setStatus('idle');
         socket.emit('leave_queue');
     }, [socket, closePeer]);
@@ -240,6 +251,31 @@ export default function useWebRTC() {
         track.enabled = !track.enabled;
         setIsCameraOff(!track.enabled);
     }, []);
+
+    /**
+     * Sends a chat message to the current partner over the data channel
+     * (Socket.IO relay). Optimistically appends it to local `messages`.
+     */
+    const sendChat = useCallback(
+        (text: string) => {
+            const trimmed = text.trim();
+            if (!trimmed) return false;
+            const rid = roomIdRef.current;
+            if (!rid) return false;
+            socket.emit('chat_message', { roomId: rid, message: trimmed });
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    from: 'me',
+                    text: trimmed,
+                    timestamp: Date.now(),
+                },
+            ]);
+            return true;
+        },
+        [socket]
+    );
 
     // ------------------------------------------------------------------
     // Socket event wiring
@@ -308,8 +344,22 @@ export default function useWebRTC() {
             roomIdRef.current = null;
             setRoomId(null);
             setPartnerId(null);
+            setMessages([]);
             // Server has already requeued us, surface the transition to the UI.
             setStatus('partner_left');
+        };
+
+        const handleChatMessage = ({ roomId: rid, message, timestamp }: ChatMessagePayload) => {
+            if (rid !== roomIdRef.current) return;
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+                    from: 'partner',
+                    text: message,
+                    timestamp,
+                },
+            ]);
         };
 
         socket.on('queued', handleQueued);
@@ -318,6 +368,7 @@ export default function useWebRTC() {
         socket.on('webrtc_answer', handleAnswer);
         socket.on('webrtc_ice_candidate', handleIce);
         socket.on('partner_disconnected', handlePartnerDisconnected);
+        socket.on('chat_message', handleChatMessage);
 
         return () => {
             socket.off('queued', handleQueued);
@@ -326,6 +377,7 @@ export default function useWebRTC() {
             socket.off('webrtc_answer', handleAnswer);
             socket.off('webrtc_ice_candidate', handleIce);
             socket.off('partner_disconnected', handlePartnerDisconnected);
+            socket.off('chat_message', handleChatMessage);
         };
     }, [socket, createPeer, closePeer, flushPendingCandidates, startLocalStream]);
 
@@ -356,6 +408,10 @@ export default function useWebRTC() {
         hasAudio,
         hasVideo,
         mediaError,
+
+        // chat
+        messages,
+        sendChat,
 
         // controls
         joinQueue,
