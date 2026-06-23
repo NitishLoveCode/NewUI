@@ -65,6 +65,9 @@ export default function useWebRTC() {
 
     const pcRef = useRef<RTCPeerConnection | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
+    // Dedupes concurrent startLocalStream() calls (handleMatched + handleOffer
+    // can both request media at once) so we never open getUserMedia twice.
+    const startPromiseRef = useRef<Promise<MediaStream | null> | null>(null);
     const roomIdRef = useRef<string | null>(null);
     // ICE candidates can arrive before setRemoteDescription resolves — buffer them.
     const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
@@ -106,49 +109,63 @@ export default function useWebRTC() {
 
     const startLocalStream = useCallback(async (): Promise<MediaStream | null> => {
         if (localStreamRef.current) return localStreamRef.current;
+        // If a request is already in flight, reuse it instead of opening a
+        // second getUserMedia (which can fail with "device in use").
+        if (startPromiseRef.current) return startPromiseRef.current;
         if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
             setMediaError('Media devices unavailable in this browser/context.');
             return null;
         }
 
-        const tryGet = async (constraints: MediaStreamConstraints) => {
-            try {
-                return await navigator.mediaDevices.getUserMedia(constraints);
-            } catch {
+        const run = async (): Promise<MediaStream | null> => {
+            const tryGet = async (constraints: MediaStreamConstraints) => {
+                try {
+                    return await navigator.mediaDevices.getUserMedia(constraints);
+                } catch {
+                    return null;
+                }
+            };
+
+            // 1) try full A/V, 2) audio only, 3) video only
+            const stream =
+                (await tryGet({ audio: true, video: true })) ||
+                (await tryGet({ audio: true, video: false })) ||
+                (await tryGet({ audio: false, video: true }));
+
+            if (!stream) {
+                setHasAudio(false);
+                setHasVideo(false);
+                setMediaError('No camera or microphone available — joining in receive-only mode.');
                 return null;
             }
+
+            localStreamRef.current = stream;
+            setLocalStream(stream);
+            const audioOk = stream.getAudioTracks().length > 0;
+            const videoOk = stream.getVideoTracks().length > 0;
+            setHasAudio(audioOk);
+            setHasVideo(videoOk);
+            setMediaError(audioOk && videoOk ? null : 'Some devices were unavailable — continuing with what we got.');
+
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            return stream;
         };
 
-        // 1) try full A/V, 2) audio only, 3) video only
-        let stream =
-            (await tryGet({ audio: true, video: true })) ||
-            (await tryGet({ audio: true, video: false })) ||
-            (await tryGet({ audio: false, video: true }));
-
-        if (!stream) {
-            setHasAudio(false);
-            setHasVideo(false);
-            setMediaError('No camera or microphone available — joining in receive-only mode.');
-            return null;
+        const promise = run();
+        startPromiseRef.current = promise;
+        try {
+            return await promise;
+        } finally {
+            startPromiseRef.current = null;
         }
-
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        const audioOk = stream.getAudioTracks().length > 0;
-        const videoOk = stream.getVideoTracks().length > 0;
-        setHasAudio(audioOk);
-        setHasVideo(videoOk);
-        setMediaError(audioOk && videoOk ? null : 'Some devices were unavailable — continuing with what we got.');
-
-        if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
-        }
-        return stream;
     }, []);
 
     const stopLocalStream = useCallback(() => {
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         localStreamRef.current = null;
+        startPromiseRef.current = null;
         setLocalStream(null);
         setHasAudio(false);
         setHasVideo(false);
@@ -386,12 +403,22 @@ export default function useWebRTC() {
             setPartnerId(pid);
             setStatus('matched');
 
+            // Drop any stale peer SYNCHRONOUSLY, before any await — otherwise an
+            // offer that arrives while we're awaiting media could create a peer
+            // that this handler then tears down.
+            closePeer();
+
             // Make sure we have media before negotiation.
             await startLocalStream();
-            closePeer();                 // safety: drop any stale peer
-            const pc = createPeer(socket, rid, isInitiator);
 
+            // IMPORTANT: only the initiator builds the peer + offer here.
+            // The answerer waits and creates its peer when the offer arrives
+            // (handleOffer). Creating it on both sides caused a race where the
+            // answerer's peer — carrying the data channel + remote description —
+            // could be torn down and rebuilt empty, breaking one media
+            // direction and the data channel entirely.
             if (isInitiator) {
+                const pc = createPeer(socket, rid, true);
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 socket.emit('webrtc_offer', { roomId: rid, sdp: offer });
