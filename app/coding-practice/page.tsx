@@ -862,7 +862,10 @@ function CodeEditorPanel({
   const [language, setLanguage] = useState<SupportedLanguage>('js');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [editableCode, setEditableCode] = useState('');
+  // editableCode is intentionally a ref (not React state): updating state on
+  // every keystroke re-rendered this panel, which could reset Monaco's caret
+  // to the last line. The editor itself is the source of truth for the text.
+  const editableCodeRef = useRef('');
   const [fontSize, setFontSize] = useState(13);
   const [showTerminal, setShowTerminal] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(180);
@@ -919,7 +922,7 @@ function CodeEditorPanel({
   // `value` prop) so that normal typing never re-applies the document and
   // bumps the caret to the last line.
   useEffect(() => {
-    setEditableCode(codeTemplate);
+    editableCodeRef.current = codeTemplate;
     const editor = editorRef.current;
     const model = editor?.getModel?.();
     if (editor && model && model.getValue() !== codeTemplate) {
@@ -964,7 +967,6 @@ function CodeEditorPanel({
   const applyingRemoteRef = useRef(false);
   const dirtyRef = useRef(false);
   const identityRef = useRef(randomCollabIdentity());
-  const editableCodeRef = useRef('');
   const cursorThrottleRef = useRef(0);
   const cursorTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -984,7 +986,6 @@ function CodeEditorPanel({
   const [incomingPulse, setIncomingPulse] = useState(false);
 
   useEffect(() => { syncEnabledRef.current = syncEnabled; }, [syncEnabled]);
-  useEffect(() => { editableCodeRef.current = editableCode; }, [editableCode]);
   useEffect(() => { onRunRef.current = onRun; }, [onRun]);
   useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
   useEffect(() => { languageRef.current = language; }, [language]);
@@ -1013,25 +1014,44 @@ function CodeEditorPanel({
     typingTimerRef.current = setTimeout(() => setPartnerTyping(false), 1200);
   }, []);
 
-  // Apply a full-document edit coming from the partner without echoing it back
-  // and while preserving our own caret/selection as best as possible.
+  // Apply a partner edit as a MINIMAL diff (shared prefix/suffix preserved)
+  // rather than replacing the whole document. A full replace blew away the
+  // viewer's caret/scroll/undo and dumped the cursor on the last line.
   const applyRemoteCode = useCallback((code: string) => {
     const editor = editorRef.current;
-    if (!editor) { setEditableCode(code); return; }
+    if (!editor) { editableCodeRef.current = code; return; }
     const model = editor.getModel?.();
-    if (!model || model.getValue() === code) return;
+    if (!model) { editableCodeRef.current = code; return; }
+    const current = model.getValue();
+    if (current === code) { editableCodeRef.current = code; return; }
     applyingRemoteRef.current = true;
     try {
-      const selections = editor.getSelections?.();
+      // Longest common prefix.
+      let p = 0;
+      const max = Math.min(current.length, code.length);
+      while (p < max && current.charCodeAt(p) === code.charCodeAt(p)) p++;
+      // Longest common suffix (not overlapping the prefix).
+      let s = 0;
+      while (
+        s < max - p &&
+        current.charCodeAt(current.length - 1 - s) === code.charCodeAt(code.length - 1 - s)
+      ) s++;
+      const startPos = model.getPositionAt(p);
+      const endPos = model.getPositionAt(current.length - s);
       editor.executeEdits('collab-remote', [{
-        range: model.getFullModelRange(),
-        text: code,
+        range: {
+          startLineNumber: startPos.lineNumber,
+          startColumn: startPos.column,
+          endLineNumber: endPos.lineNumber,
+          endColumn: endPos.column,
+        },
+        text: code.slice(p, code.length - s),
         forceMoveMarkers: true,
       }]);
-      if (selections) editor.setSelections(selections);
     } finally {
       applyingRemoteRef.current = false;
     }
+    editableCodeRef.current = code;
   }, []);
 
   const applyRemoteCursor = useCallback((msg: CollabMessage) => {
@@ -1170,7 +1190,7 @@ function CodeEditorPanel({
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     const code = value ?? '';
-    setEditableCode(code);
+    editableCodeRef.current = code;
     if (applyingRemoteRef.current) return;  // remote-applied edit — never echo
     dirtyRef.current = true;
     if (syncEnabledRef.current) {
@@ -1427,7 +1447,7 @@ function CodeEditorPanel({
         <Editor
           height="100%"
           language={getMonacoLanguage(language)}
-          defaultValue={editableCode}
+          defaultValue={editableCodeRef.current}
           onChange={handleEditorChange}
           onMount={handleEditorMount}
           theme="vs-dark"
