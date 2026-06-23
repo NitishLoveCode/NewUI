@@ -839,15 +839,13 @@ function ProblemStatement() {
 // ─── Code Editor Panel ────────────────────────────────────────────────────────
 
 function CodeEditorPanel({
-  codeRunState, terminalLines, onRun, onSubmit, showTerminal, onToggleTerminal, elapsed, isRecording,
+  codeRunState, terminalLines, onRun, onSubmit, elapsed, isRecording,
   connectionState, collabReady, sendCollab, onCollab,
 }: {
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
   onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
-  showTerminal: boolean;
-  onToggleTerminal: () => void;
   elapsed: number;
   isRecording: boolean;
   connectionState: 'idle' | 'searching' | 'connected';
@@ -866,6 +864,8 @@ function CodeEditorPanel({
   const [showCelebration, setShowCelebration] = useState(false);
   const [editableCode, setEditableCode] = useState('');
   const [fontSize, setFontSize] = useState(13);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [terminalHeight, setTerminalHeight] = useState(180);
   const starterCodes = questionData?.starterCode ?? [];
   const solutions = questionData?.solutions ?? [];
   const availableLanguages = useMemo(() => {
@@ -970,6 +970,12 @@ function CodeEditorPanel({
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const partnerLineRef = useRef<number | null>(null);
+  const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest action handlers / language kept in refs so the inbound-message
+  // subscription can fire them without re-subscribing on every change.
+  const onRunRef = useRef(onRun);
+  const onSubmitRef = useRef(onSubmit);
+  const languageRef = useRef(language);
 
   const [syncEnabled, setSyncEnabled] = useState(true);
   const syncEnabledRef = useRef(true);
@@ -979,8 +985,21 @@ function CodeEditorPanel({
 
   useEffect(() => { syncEnabledRef.current = syncEnabled; }, [syncEnabled]);
   useEffect(() => { editableCodeRef.current = editableCode; }, [editableCode]);
+  useEffect(() => { onRunRef.current = onRun; }, [onRun]);
+  useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
+  useEffect(() => { languageRef.current = language; }, [language]);
 
   const isCollabLive = connectionState === 'connected' && collabReady;
+
+  // Keep the partner's caret visible only while they're active: any cursor or
+  // code activity (re)arms a 3s timer that hides their caret once they go idle.
+  const keepCursorAlive = useCallback(() => {
+    if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
+    cursorHideTimerRef.current = setTimeout(() => {
+      cursorMgrRef.current?.clear();
+      partnerLineRef.current = null;
+    }, 3000);
+  }, []);
 
   const flashIncoming = useCallback(() => {
     setIncomingPulse(true);
@@ -1026,7 +1045,8 @@ function CodeEditorPanel({
       name: (msg.name as string) ?? 'Partner',
       color: (msg.color as string) ?? '#f59e0b',
     });
-  }, []);
+    keepCursorAlive();
+  }, [keepCursorAlive]);
 
   const sendHello = useCallback((reply: boolean) => {
     sendCollab({
@@ -1056,6 +1076,18 @@ function CodeEditorPanel({
         if (typeof msg.code === 'string') applyRemoteCode(msg.code as string);
         flashIncoming();
         markPartnerTyping();
+        keepCursorAlive();
+        return;
+      }
+      if (type === 'action') {
+        // Mirror the partner's Run / Submit button press on this side too.
+        if (!syncEnabledRef.current) return;
+        if (msg.action === 'run') {
+          setShowTerminal(true);
+          onRunRef.current({ code: editableCodeRef.current, language: languageRef.current });
+        } else if (msg.action === 'submit') {
+          onSubmitRef.current();
+        }
         return;
       }
       if (type === 'cursor') {
@@ -1065,7 +1097,7 @@ function CodeEditorPanel({
       }
     });
     return off;
-  }, [onCollab, applyRemoteCode, applyRemoteCursor, sendHello, flashIncoming, markPartnerTyping]);
+  }, [onCollab, applyRemoteCode, applyRemoteCursor, sendHello, flashIncoming, markPartnerTyping, keepCursorAlive]);
 
   // Greet (and reset) whenever the data channel opens / closes.
   useEffect(() => {
@@ -1167,12 +1199,42 @@ function CodeEditorPanel({
     if (line && editor) editor.revealLineInCenter?.(line);
   }, []);
 
+  // Run: open the console automatically and (while syncing) mirror the press.
+  const handleRunClick = useCallback(() => {
+    setShowTerminal(true);
+    onRun({ code: editableCodeRef.current, language });
+    if (syncEnabledRef.current) sendCollab({ t: 'action', action: 'run' });
+  }, [onRun, language, sendCollab]);
+
+  const handleSubmitClick = useCallback(() => {
+    onSubmit();
+    if (syncEnabledRef.current) sendCollab({ t: 'action', action: 'submit' });
+  }, [onSubmit, sendCollab]);
+
+  // Drag the top edge of the console to resize its height.
+  const handleTerminalResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = terminalHeight;
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.min(Math.max(startH + (startY - ev.clientY), 90), 460);
+      setTerminalHeight(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [terminalHeight]);
+
   // Cleanup on unmount.
   useEffect(() => () => {
     cursorMgrRef.current?.dispose();
     if (cursorTrailingRef.current) clearTimeout(cursorTrailingRef.current);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
   }, []);
 
   return (
@@ -1389,7 +1451,7 @@ function CodeEditorPanel({
         style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#161b22' }}
       >
         <motion.button
-          onClick={onToggleTerminal}
+          onClick={() => setShowTerminal((v) => !v)}
           whileHover={{ scale: 1.04 }}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
           style={{
@@ -1405,7 +1467,7 @@ function CodeEditorPanel({
         <div className="flex-1" />
 
         <motion.button
-          onClick={() => onRun({ code: editableCode, language })}
+          onClick={handleRunClick}
           disabled={codeRunState === 'running'}
           whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(74,222,128,0.4)' }}
           whileTap={{ scale: 0.97 }}
@@ -1427,7 +1489,7 @@ function CodeEditorPanel({
         </motion.button>
 
         <motion.button
-          onClick={onSubmit}
+          onClick={handleSubmitClick}
           whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(251,191,36,0.4)' }}
           whileTap={{ scale: 0.97 }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
@@ -1446,14 +1508,40 @@ function CodeEditorPanel({
       <AnimatePresence>
         {showTerminal && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t"
-            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0a0f1a', maxHeight: 130 }}
+            className="overflow-hidden border-t flex flex-col"
+            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0a0f1a', height: terminalHeight }}
           >
-            <div className="p-3 font-mono text-xs space-y-0.5 overflow-auto max-h-28">
+            {/* Drag handle — resize the console height */}
+            <div
+              onMouseDown={handleTerminalResizeStart}
+              className="h-2 w-full cursor-row-resize flex items-center justify-center group flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+              title="Drag to resize"
+            >
+              <div className="w-10 h-0.5 rounded-full transition-colors group-hover:bg-white/40" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            </div>
+            {/* Console header */}
+            <div
+              className="flex items-center justify-between px-3 py-1.5 border-b flex-shrink-0"
+              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            >
+              <div className="flex items-center gap-1.5">
+                <Terminal size={11} style={{ color: '#4ade80' }} />
+                <span className="text-[11px] font-semibold text-white/50">Console</span>
+              </div>
+              <button
+                onClick={() => setShowTerminal(false)}
+                className="text-white/30 hover:text-white/70"
+                title="Close console"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <div className="flex-1 p-3 font-mono text-xs space-y-0.5 overflow-auto">
               <AnimatePresence>
                 {terminalLines.map((line, i) => (
                   <motion.div
@@ -2707,13 +2795,20 @@ function CollaborationArena({
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showTerminal, setShowTerminal] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(s => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Mirror the partner opening the chat while collaborating.
+  useEffect(() => {
+    const off = onCollab((msg) => {
+      if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
+    });
+    return off;
+  }, [onCollab]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
@@ -2729,8 +2824,6 @@ function CollaborationArena({
           terminalLines={terminalLines}
           onRun={onRunCode}
           onSubmit={onSubmit}
-          showTerminal={showTerminal}
-          onToggleTerminal={() => setShowTerminal(!showTerminal)}
           elapsed={elapsed}
           isRecording={isRecording}
           connectionState={connectionState}
@@ -2763,7 +2856,7 @@ function CollaborationArena({
 
         <div className="flex gap-2 w-full relative">
           <motion.button
-            onClick={() => setChatOpen(true)}
+            onClick={() => { setChatOpen(true); if (collabReady) sendCollab({ t: 'action', action: 'chat-open' }); }}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
