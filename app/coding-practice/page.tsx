@@ -1194,7 +1194,7 @@ function CodeEditorPanel({
 
 function ChatDrawer({
   isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect, onSkip,
-  codeRunState, terminalLines, onRun, onSubmit, currentStep, localVideoRef, remoteVideoRef,
+  codeRunState, terminalLines, onRun, onSubmit, currentStep, localStream, remoteStream, connectionState,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1215,8 +1215,9 @@ function ChatDrawer({
   onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
   currentStep: number;
-  localVideoRef: React.RefObject<HTMLVideoElement | null>;
-  remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
+  connectionState: 'idle' | 'searching' | 'connected';
 }) {
   const [showFiles, setShowFiles] = useState(false);
   const [keyboardShareEnabled, setKeyboardShareEnabled] = useState(false);
@@ -1349,13 +1350,11 @@ function ChatDrawer({
                     {isCameraOff ? (
                       <span className="text-3xl">📹</span>
                     ) : (
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
+                      <MediaStreamVideo
+                        stream={localStream}
                         muted
+                        mirror
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: 'scaleX(-1)' }}
                       />
                     )}
 
@@ -1425,23 +1424,6 @@ function ChatDrawer({
                         </motion.button>
 
                         <motion.button
-                          onClick={onSkip}
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.85 }}
-                          className="flex items-center justify-center rounded-lg text-xs font-bold"
-                          style={{
-                            width: 28,
-                            height: 28,
-                            background: 'linear-gradient(135deg, rgba(251,191,36,0.6), rgba(217,119,6,0.4))',
-                            border: '1px solid rgba(251,191,36,0.8)',
-                            color: '#fcd34d',
-                          }}
-                          title="Skip — find a new partner"
-                        >
-                          <SkipForward size={12} />
-                        </motion.button>
-
-                        <motion.button
                           onClick={onDisconnect}
                           whileHover={{ scale: 1.15 }}
                           whileTap={{ scale: 0.85 }}
@@ -1491,21 +1473,50 @@ function ChatDrawer({
                       boxShadow: '0 0 20px rgba(34,211,238,0.2)',
                     }}
                   >
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
+                    <MediaStreamVideo
+                      stream={remoteStream}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     {/* Fallback when no remote stream */}
-                    {!remoteVideoRef?.current?.srcObject && (
+                    {connectionState === 'connected' && !remoteStream && (
                       <span className="text-3xl absolute">🧑‍💻</span>
+                    )}
+
+                    {/* Buffering overlay when not connected to a partner */}
+                    {connectionState !== 'connected' && (
+                      <BufferingOverlay
+                        color="#22d3ee"
+                        label={connectionState === 'searching' ? 'Finding a partner…' : 'Press Connect to start'}
+                        active={connectionState === 'searching'}
+                      />
                     )}
 
                     {/* Label - Top */}
                     <div className="absolute top-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
                       <div className="text-xs font-bold text-white/80 uppercase tracking-wider">Partner</div>
                     </div>
+
+                    {/* Skip button overlay (only when actually connected to a partner) */}
+                    {connectionState === 'connected' && (
+                      <div className="absolute inset-0 flex items-end justify-center p-2 bg-gradient-to-t from-black/80 to-transparent rounded-xl pointer-events-none">
+                        <motion.button
+                          onClick={onSkip}
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
+                          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(251,191,36,0.85), rgba(217,119,6,0.7))',
+                            border: '1px solid rgba(251,191,36,0.9)',
+                            color: '#fffbeb',
+                            boxShadow: '0 4px 16px rgba(251,191,36,0.35)',
+                          }}
+                          title="Skip — find a new partner"
+                        >
+                          <SkipForward size={14} />
+                          <span>Skip</span>
+                        </motion.button>
+                      </div>
+                    )}
                   </motion.div>
                   <motion.div
                     className="flex items-center gap-1"
@@ -1514,11 +1525,14 @@ function ChatDrawer({
                     transition={{ delay: 0.25 }}
                   >
                     <motion.span
-                      className="w-2 h-2 rounded-full bg-green-500"
-                      animate={{ scale: [1, 1.3, 1] }}
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: connectionState === 'connected' ? '#22c55e' : connectionState === 'searching' ? '#fbbf24' : '#6b7280' }}
+                      animate={connectionState === 'connected' ? { scale: [1, 1.3, 1] } : { scale: 1 }}
                       transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
                     />
-                    <span className="text-xs text-white/50">Active</span>
+                    <span className="text-xs text-white/50">
+                      {connectionState === 'connected' ? 'Active' : connectionState === 'searching' ? 'Searching…' : 'Offline'}
+                    </span>
                   </motion.div>
                 </motion.div>
 
@@ -1883,19 +1897,63 @@ function ChatDrawer({
   );
 }
 
+// ─── MediaStream <video> wrapper ──────────────────────────────────────────────
+// React refs can only attach to one DOM node, so when the same stream needs to
+// render in two places at once (inline preview + chat drawer), passing the
+// hook's videoRef around does not work. This wrapper takes the raw MediaStream
+// and attaches it to its own internal <video> element via a useEffect, so any
+// number of consumers can render the same stream independently.
+
+const MediaStreamVideo = React.memo(({
+  stream,
+  muted = false,
+  mirror = false,
+  className,
+  style,
+}: {
+  stream: MediaStream | null;
+  muted?: boolean;
+  mirror?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+      className={className}
+      style={{ ...(mirror ? { transform: 'scaleX(-1)' } : null), ...style }}
+    />
+  );
+});
+
+MediaStreamVideo.displayName = 'MediaStreamVideo';
+
 // ─── Video Box Component ──────────────────────────────────────────────────────
 
 const VideoBox = React.memo(({
   isYou,
   color,
-  videoRef,
+  stream,
   isCameraOff,
   isAnonymous,
   partnerStatus,
 }: {
   isYou: boolean;
   color: string;
-  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  stream?: MediaStream | null;
   isCameraOff: boolean;
   isAnonymous: boolean;
   /** Only meaningful when !isYou. Drives the buffering overlay. */
@@ -1917,12 +1975,11 @@ const VideoBox = React.memo(({
       border: `1px solid ${color}40`,
     }}
   >
-    {videoRef && (
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
+    {stream && (
+      <MediaStreamVideo
+        stream={stream}
         muted={isYou}
+        mirror={isYou}
         className="absolute inset-0 w-full h-full object-cover"
         style={{
           display: (isCameraOff && isYou) ? 'none' : 'block',
@@ -2107,11 +2164,11 @@ BufferingOverlay.displayName = 'BufferingOverlay';
 
 function VideoCallBar({
   isAnonymous, isMuted, isCameraOff, isRecording, elapsed, onMute, onCamera, onRecording, onDisconnect, onSkip,
-  localVideoRef, remoteVideoRef, connectionState, onConnect,
+  localStream, remoteStream, connectionState, onConnect,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean; elapsed: number;
   onMute: () => void; onCamera: () => void; onRecording: () => void; onDisconnect: () => void; onSkip: () => void;
-  localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  localStream: MediaStream | null; remoteStream: MediaStream | null;
   connectionState: 'idle' | 'searching' | 'connected';
   onConnect: () => void;
 }) {
@@ -2131,8 +2188,8 @@ function VideoCallBar({
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-1.5 w-full">
       <div className="flex gap-1.5 w-full">
-        <VideoBox isYou color="#7c3aed" videoRef={localVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
-        <VideoBox isYou={false} color="#22d3ee" videoRef={remoteVideoRef} isCameraOff={isCameraOff} isAnonymous={isAnonymous} partnerStatus={connectionState} />
+        <VideoBox isYou color="#7c3aed" stream={localStream} isCameraOff={isCameraOff} isAnonymous={isAnonymous} />
+        <VideoBox isYou={false} color="#22d3ee" stream={remoteStream} isCameraOff={isCameraOff} isAnonymous={isAnonymous} partnerStatus={connectionState} />
       </div>
 
       <div className="flex items-center gap-1 w-full">
@@ -2310,7 +2367,7 @@ function CodeSummitAnimation({ onClose }: { onClose: () => void }) {
 function CollaborationArena({
   isAnonymous, isMuted, isCameraOff, isRecording, codeRunState, terminalLines, chatMessages, chatInput,
   onMute, onCamera, onRecording, onRunCode, onSubmit, onSendChat, onChatInput, onDisconnect, onSkip, currentStep,
-  localVideoRef, remoteVideoRef, connectionState, onConnect,
+  localStream, remoteStream, connectionState, onConnect,
 }: {
   isAnonymous: boolean; isMuted: boolean; isCameraOff: boolean; isRecording: boolean;
   codeRunState: 'idle' | 'running' | 'success'; terminalLines: typeof TERMINAL_LINES;
@@ -2318,7 +2375,7 @@ function CollaborationArena({
   onMute: () => void; onCamera: () => void; onRecording: () => void;
   onRunCode: (payload: { code: string; language: SupportedLanguage }) => void; onSubmit: () => void; onSendChat: () => void;
   onChatInput: (v: string) => void; onDisconnect: () => void; onSkip: () => void; currentStep: number;
-  localVideoRef: React.RefObject<HTMLVideoElement | null>; remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  localStream: MediaStream | null; remoteStream: MediaStream | null;
   connectionState: 'idle' | 'searching' | 'connected';
   onConnect: () => void;
 }) {
@@ -2368,8 +2425,8 @@ function CollaborationArena({
           onRecording={onRecording}
           onDisconnect={onDisconnect}
           onSkip={onSkip}
-          localVideoRef={localVideoRef}
-          remoteVideoRef={remoteVideoRef}
+          localStream={localStream}
+          remoteStream={remoteStream}
           connectionState={connectionState}
           onConnect={onConnect}
         />
@@ -2507,8 +2564,9 @@ function CollaborationArena({
         onRun={onRunCode}
         onSubmit={onSubmit}
         currentStep={currentStep}
-        localVideoRef={localVideoRef}
-        remoteVideoRef={remoteVideoRef}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        connectionState={connectionState}
       />
     </motion.div>
   );
@@ -2554,6 +2612,8 @@ function CodingPracticeContent() {
   const {
     localVideoRef,
     remoteVideoRef,
+    localStream,
+    remoteStream,
     status,
     isMuted,
     isCameraOff,
@@ -2744,8 +2804,8 @@ function CodingPracticeContent() {
             onChatInput={setChatInput}
             onDisconnect={connectionState === 'searching' ? handleCancelSearch : handleDisconnect}
             onSkip={skip}
-            localVideoRef={localVideoRef}
-            remoteVideoRef={remoteVideoRef}
+            localStream={localStream}
+            remoteStream={remoteStream}
             connectionState={connectionState}
             onConnect={() => handleConnect(true)}
           />

@@ -68,6 +68,11 @@ export default function useWebRTC() {
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    // The actual MediaStream objects — exposed so multiple <video> elements
+    // can attach independently (e.g. an inline preview + a drawer). Refs are
+    // also exposed for the simple single-consumer case.
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
     // Tracks what local devices we actually managed to acquire. Either may be
     // false if the user denied permission, has no hardware, or the device is
     // already in use by another tab. Negotiation still proceeds either way.
@@ -113,6 +118,7 @@ export default function useWebRTC() {
         }
 
         localStreamRef.current = stream;
+        setLocalStream(stream);
         const audioOk = stream.getAudioTracks().length > 0;
         const videoOk = stream.getVideoTracks().length > 0;
         setHasAudio(audioOk);
@@ -128,6 +134,7 @@ export default function useWebRTC() {
     const stopLocalStream = useCallback(() => {
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         localStreamRef.current = null;
+        setLocalStream(null);
         setHasAudio(false);
         setHasVideo(false);
         if (localVideoRef.current) localVideoRef.current.srcObject = null;
@@ -147,6 +154,7 @@ export default function useWebRTC() {
         }
         pcRef.current = null;
         pendingCandidatesRef.current = [];
+        setRemoteStream(null);
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     }, []);
 
@@ -183,9 +191,12 @@ export default function useWebRTC() {
             };
 
             pc.ontrack = (event) => {
-                const [remoteStream] = event.streams;
-                if (remoteVideoRef.current && remoteStream) {
-                    remoteVideoRef.current.srcObject = remoteStream;
+                const [stream] = event.streams;
+                if (stream) {
+                    setRemoteStream(stream);
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = stream;
+                    }
                 }
             };
 
@@ -391,9 +402,14 @@ export default function useWebRTC() {
     }, [socket, closePeer, stopLocalStream]);
 
     return {
-        // refs to bind to <video> tags
+        // refs to bind to <video> tags (single-consumer convenience)
         localVideoRef,
         remoteVideoRef,
+
+        // raw streams — use these when you need to attach to multiple <video>
+        // elements (e.g. inline preview + chat drawer).
+        localStream,
+        remoteStream,
 
         // connection / match state
         isConnected,
