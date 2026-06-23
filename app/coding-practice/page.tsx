@@ -1728,7 +1728,7 @@ function ChatDrawer({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-4 z-50 flex gap-3 rounded-2xl overflow-hidden"
+            className="fixed inset-2 sm:inset-4 z-50 flex flex-col lg:flex-row gap-3 rounded-2xl overflow-y-auto lg:overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
               border: '1px solid rgba(255,255,255,0.1)',
@@ -1737,7 +1737,7 @@ function ChatDrawer({
           >
             {/* Left Sidebar: Video Feeds */}
             <div
-              className="w-64 flex-shrink-0 flex flex-col gap-3 p-4 border-r"
+              className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-3 p-4 border-b lg:border-b-0 lg:border-r"
               style={{
                 background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -1771,7 +1771,7 @@ function ChatDrawer({
                 >
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative w-full max-w-[180px] lg:max-w-none mx-auto"
                     style={{
                       background: isCameraOff
                         ? 'linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6))'
@@ -1899,7 +1899,7 @@ function ChatDrawer({
                 >
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative w-full max-w-[180px] lg:max-w-none mx-auto"
                     style={{
                       background: 'linear-gradient(135deg, rgba(34,211,238,0.4), rgba(6,182,212,0.2))',
                       border: '2px solid rgba(34,211,238,0.5)',
@@ -1980,7 +1980,7 @@ function ChatDrawer({
             </div>
 
             {/* Center: Code Editor (Top) + Output (Bottom) */}
-            <div className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
+            <div className="flex-1 flex flex-col gap-3 p-4 overflow-hidden w-full min-h-[55vh] lg:min-h-0">
               {/* Code Editor Section */}
               <motion.div
                 className="flex-1 flex flex-col rounded-xl overflow-hidden"
@@ -2138,11 +2138,10 @@ function ChatDrawer({
 
             {/* Right Sidebar: Chat */}
             <motion.div
-              className="w-80 flex-shrink-0 flex flex-col border-l overflow-hidden"
+              className="w-full lg:w-80 flex-shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l overflow-hidden h-[60vh] lg:h-full"
               style={{
                 borderColor: 'rgba(88,166,255,0.15)',
                 background: 'linear-gradient(180deg, #0d1117 0%, #161b22 100%)',
-                height: '100%',
               }}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -2831,14 +2830,14 @@ function CollaborationArena({
   }, [onCollab]);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col lg:flex-row gap-3 h-full overflow-y-auto lg:overflow-hidden">
       {/* Left: Problem statement */}
-      <div className="w-80 flex-shrink-0 overflow-y-auto">
+      <div className="w-full lg:w-80 flex-shrink-0 lg:overflow-y-auto">
         <ProblemStatement />
       </div>
 
       {/* Center: Code Editor */}
-      <div className="flex-1 overflow-hidden min-w-0">
+      <div className="flex-1 overflow-hidden min-w-0 h-[70vh] min-h-[420px] lg:h-auto lg:min-h-0">
         <CodeEditorPanel
           codeRunState={codeRunState}
           terminalLines={terminalLines}
@@ -2854,7 +2853,7 @@ function CollaborationArena({
       </div>
 
       {/* Right: Steps + Video + Chat */}
-      <div className="flex flex-col gap-3 flex-shrink-0 w-64 overflow-y-auto">
+      <div className="flex flex-col gap-3 flex-shrink-0 w-full lg:w-64 lg:overflow-y-auto">
         <StepsBar />
 
         <VideoCallBar
@@ -3213,10 +3212,9 @@ function CodingPracticeContent() {
 
   return (
     <div
-      className="flex flex-row"
+      className="flex flex-row h-[calc(100dvh-7.5rem)] md:h-[calc(100vh-3.5rem)]"
       style={{
         background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
-        height: 'calc(100vh - 3.5rem)',
         padding: '0.75rem',
       }}
     >
@@ -3229,7 +3227,6 @@ function CodingPracticeContent() {
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           className="h-full overflow-hidden"
-          style={{ height: 'calc(100vh - 3.5rem - 1.5rem)' }}
         >
           <CollaborationArena
             isAnonymous={isAnonymous}
