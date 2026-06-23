@@ -914,8 +914,27 @@ function CodeEditorPanel({
     }
   }, [availableLanguages, defaultLanguage, language]);
 
+  // Reset to the starter/template code when the problem or language changes.
+  // We push it imperatively into the model (instead of feeding a controlled
+  // `value` prop) so that normal typing never re-applies the document and
+  // bumps the caret to the last line.
   useEffect(() => {
     setEditableCode(codeTemplate);
+    const editor = editorRef.current;
+    const model = editor?.getModel?.();
+    if (editor && model && model.getValue() !== codeTemplate) {
+      applyingRemoteRef.current = true;
+      try {
+        editor.executeEdits('template-reset', [{
+          range: model.getFullModelRange(),
+          text: codeTemplate,
+          forceMoveMarkers: true,
+        }]);
+        editor.setPosition?.({ lineNumber: 1, column: 1 });
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    }
   }, [codeTemplate, language, questionId]);
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
@@ -1098,6 +1117,21 @@ function CodeEditorPanel({
     editorRef.current = editor;
     monacoRef.current = monaco;
     cursorMgrRef.current = new RemoteCursorManager(editor, monaco);
+    // Seed the model with the latest template if it changed before mount.
+    const model = editor.getModel?.();
+    if (model && editableCodeRef.current && model.getValue() !== editableCodeRef.current) {
+      applyingRemoteRef.current = true;
+      try {
+        editor.executeEdits('template-seed', [{
+          range: model.getFullModelRange(),
+          text: editableCodeRef.current,
+          forceMoveMarkers: true,
+        }]);
+        editor.setPosition?.({ lineNumber: 1, column: 1 });
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    }
     editor.onDidChangeCursorPosition?.(scheduleCursor);
     editor.onDidChangeCursorSelection?.(scheduleCursor);
   }, [scheduleCursor]);
@@ -1331,7 +1365,7 @@ function CodeEditorPanel({
         <Editor
           height="100%"
           language={getMonacoLanguage(language)}
-          value={editableCode}
+          defaultValue={editableCode}
           onChange={handleEditorChange}
           onMount={handleEditorMount}
           theme="vs-dark"
