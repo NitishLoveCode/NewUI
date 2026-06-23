@@ -945,6 +945,10 @@ function CodeEditorPanel({
       setLanguage(newLang);
       setShowLangMenu(false);
       setShowCelebration(true);
+      // Mirror the switch to the partner while collaborating.
+      if (syncEnabledRef.current) {
+        sendCollab({ t: 'lang', lang: newLang, name: identityRef.current.name });
+      }
     }
   };
 
@@ -978,6 +982,7 @@ function CodeEditorPanel({
   const onRunRef = useRef(onRun);
   const onSubmitRef = useRef(onSubmit);
   const languageRef = useRef(language);
+  const availableLangsRef = useRef(availableLanguages);
 
   const [syncEnabled, setSyncEnabled] = useState(true);
   const syncEnabledRef = useRef(true);
@@ -989,6 +994,7 @@ function CodeEditorPanel({
   useEffect(() => { onRunRef.current = onRun; }, [onRun]);
   useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
   useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => { availableLangsRef.current = availableLanguages; }, [availableLanguages]);
 
   const isCollabLive = connectionState === 'connected' && collabReady;
 
@@ -1075,8 +1081,20 @@ function CodeEditorPanel({
       name: identityRef.current.name,
       color: identityRef.current.color,
       code: editableCodeRef.current,
+      lang: languageRef.current,
     });
   }, [sendCollab]);
+
+  // Adopt a language chosen by the partner (no re-broadcast). Switching the
+  // language resets the editor to that language's starter template on both
+  // sides via the template-reset effect, keeping everyone in sync.
+  const applyRemoteLanguage = useCallback((lang: SupportedLanguage) => {
+    if (lang === languageRef.current) return;
+    if (!availableLangsRef.current.some((o) => o.id === lang)) return;
+    setLanguage(lang);
+    setShowLangMenu(false);
+    setShowCelebration(true);
+  }, []);
 
   // Subscribe to inbound collab messages for the lifetime of the panel.
   useEffect(() => {
@@ -1084,11 +1102,20 @@ function CodeEditorPanel({
       const type = msg?.t;
       if (type === 'hello') {
         setPartner({ name: (msg.name as string) ?? 'Partner', color: (msg.color as string) ?? '#f59e0b' });
-        // Adopt partner code only if we haven't started editing locally.
-        if (syncEnabledRef.current && !dirtyRef.current && typeof msg.code === 'string') {
+        // Converge on the partner's language first (resets to its template);
+        // otherwise adopt their code if we haven't started editing locally.
+        if (syncEnabledRef.current && typeof msg.lang === 'string' && msg.lang !== languageRef.current) {
+          applyRemoteLanguage(msg.lang as SupportedLanguage);
+        } else if (syncEnabledRef.current && !dirtyRef.current && typeof msg.code === 'string') {
           applyRemoteCode(msg.code as string);
         }
         if (!msg.reply) sendHello(true);
+        return;
+      }
+      if (type === 'lang') {
+        if (!syncEnabledRef.current) return;
+        if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
+        if (typeof msg.lang === 'string') applyRemoteLanguage(msg.lang as SupportedLanguage);
         return;
       }
       if (type === 'code') {
@@ -1117,7 +1144,7 @@ function CodeEditorPanel({
       }
     });
     return off;
-  }, [onCollab, applyRemoteCode, applyRemoteCursor, sendHello, flashIncoming, markPartnerTyping, keepCursorAlive]);
+  }, [onCollab, applyRemoteCode, applyRemoteCursor, applyRemoteLanguage, sendHello, flashIncoming, markPartnerTyping, keepCursorAlive]);
 
   // Greet (and reset) whenever the data channel opens / closes.
   useEffect(() => {
