@@ -432,6 +432,13 @@ export default function useWebRTC() {
                 await startLocalStream();
                 pc = createPeer(socket, rid, false);
             }
+            // Only accept an offer when we have no pending local offer of our
+            // own. If we're not in 'stable' (e.g. a stale/duplicate offer),
+            // ignore it to avoid "wrong state" errors.
+            if (pc.signalingState !== 'stable') {
+                console.warn('[useWebRTC] ignoring offer in state', pc.signalingState);
+                return;
+            }
             await pc.setRemoteDescription(sdp);
             await flushPendingCandidates();
             const answer = await pc.createAnswer();
@@ -443,6 +450,13 @@ export default function useWebRTC() {
             if (rid !== roomIdRef.current) return;
             const pc = pcRef.current;
             if (!pc) return;
+            // An answer is only valid while we're waiting on our own offer.
+            // A duplicate or stale answer arriving after the connection is
+            // already 'stable' triggers "Called in wrong state: stable".
+            if (pc.signalingState !== 'have-local-offer') {
+                console.warn('[useWebRTC] ignoring answer in state', pc.signalingState);
+                return;
+            }
             await pc.setRemoteDescription(sdp);
             await flushPendingCandidates();
         };
