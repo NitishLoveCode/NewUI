@@ -1161,7 +1161,16 @@ function CodeEditorPanel({
       }
     });
     return off;
-  }, [onCollab, applyRemoteCode, applyRemoteCursor, applyRemoteLanguage, sendHello, flashIncoming, markPartnerTyping, keepCursorAlive]);
+  }, [
+    onCollab, 
+    applyRemoteCode, 
+    applyRemoteCursor, 
+    applyRemoteLanguage, 
+    sendHello, 
+    flashIncoming, 
+    markPartnerTyping, 
+    keepCursorAlive
+  ]);
 
   // Greet (and reset) whenever the data channel opens / closes.
   useEffect(() => {
@@ -1670,8 +1679,29 @@ function CodeEditorPanel({
 // ─── Chat Drawer ──────────────────────────────────────────────────────────────
 
 function ChatDrawer({
-  isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect, onSkip,
-  codeRunState, terminalLines, onRun, onSubmit, currentStep, localStream, remoteStream, connectionState,
+  isOpen, 
+  onClose, 
+  messages, 
+  input, 
+  onInput, 
+  onSend, 
+  isMuted, 
+  isCameraOff, 
+  isRecording,
+  onMute, 
+  onCamera, 
+  onRecording, 
+  onDisconnect, 
+  onSkip,
+  codeRunState,
+  terminalLines, 
+  onRun, onSubmit, 
+  currentStep, 
+  localStream, 
+  remoteStream,
+  connectionState,
+  collabReady,
+  sendCollab
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1695,6 +1725,8 @@ function ChatDrawer({
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   connectionState: 'idle' | 'searching' | 'connected';
+  collabReady: boolean;
+  sendCollab: (msg: CollabMessage) => void;
 }) {
   const [showFiles, setShowFiles] = useState(false);
   const [keyboardShareEnabled, setKeyboardShareEnabled] = useState(false);
@@ -1761,7 +1793,10 @@ function ChatDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              if (collabReady) sendCollab({ t: 'action', action: 'chat-drawer-close' });
+            }}
             className="fixed inset-0 z-40"
             style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
           />
@@ -2869,6 +2904,7 @@ function CollaborationArena({
   useEffect(() => {
     const off = onCollab((msg) => {
       if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
+      if(msg?.t === 'action' && msg.action === 'chat-drawer-close') setChatOpen(false);
     });
     return off;
   }, [onCollab]);
@@ -3053,6 +3089,8 @@ function CollaborationArena({
         localStream={localStream}
         remoteStream={remoteStream}
         connectionState={connectionState}
+        collabReady={collabReady}
+        sendCollab={sendCollab}
       />
     </motion.div>
   );
