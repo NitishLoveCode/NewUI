@@ -1784,6 +1784,11 @@ function ChatDrawer({
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  const handleClose = useCallback(() => {
+    if (collabReady) sendCollab({ t: 'action', action: 'chat-drawer-close' });
+    onClose();
+  }, [collabReady, sendCollab, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1793,10 +1798,7 @@ function ChatDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => {
-              if (collabReady) sendCollab({ t: 'action', action: 'chat-drawer-close' });
-              onClose();
-            }}
+            onClick={handleClose}
             className="fixed inset-0 z-40"
             style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
           />
@@ -1826,7 +1828,7 @@ function ChatDrawer({
               <div className="flex flex-col gap-2">
                 {/* Close Button */}
                 <motion.button
-                  onClick={onClose}
+                  onClick={handleClose}
                   whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   className="self-start flex items-center justify-center rounded-full"
@@ -2905,7 +2907,6 @@ function CollaborationArena({
     const off = onCollab((msg) => {
       if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
       if(msg?.t === 'action' && msg.action === 'chat-drawer-close') {
-        console.log("wdddddddddddddddddddddd..")
         setChatOpen(false)
       };
     });
