@@ -1794,8 +1794,8 @@ function ChatDrawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
-              onClose();
               if (collabReady) sendCollab({ t: 'action', action: 'chat-drawer-close' });
+              onClose();
             }}
             className="fixed inset-0 z-40"
             style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
@@ -2904,7 +2904,11 @@ function CollaborationArena({
   useEffect(() => {
     const off = onCollab((msg) => {
       if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
-      if(msg?.t === 'action' && msg.action === 'chat-drawer-close') setChatOpen(false);
+      if(msg?.t === 'action' && msg.action === 'chat-drawer-close') {
+        console.log("wdddddddddddddddddddddd.."){
+          setChatOpen(false)
+        }
+      };
     });
     return off;
   }, [onCollab]);
