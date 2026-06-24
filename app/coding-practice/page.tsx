@@ -973,6 +973,9 @@ function CodeEditorPanel({
   const identityRef = useRef(randomCollabIdentity());
   const cursorThrottleRef = useRef(0);
   const cursorTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollThrottleRef = useRef(0);
+  const scrollTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteScrollRef = useRef(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const partnerLineRef = useRef<number | null>(null);
@@ -1074,6 +1077,20 @@ function CodeEditorPanel({
     keepCursorAlive();
   }, [keepCursorAlive]);
 
+  // Apply the partner's scroll position, echo-guarded so it doesn't bounce back.
+  const applyRemoteScroll = useCallback((top: number, left: number) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    applyingRemoteScrollRef.current = true;
+    try {
+      editor.setScrollTop?.(top);
+      editor.setScrollLeft?.(left);
+    } finally {
+      // Release the guard after the scroll event has fired.
+      requestAnimationFrame(() => { applyingRemoteScrollRef.current = false; });
+    }
+  }, []);
+
   const sendHello = useCallback((reply: boolean) => {
     sendCollab({
       t: 'hello',
@@ -1159,6 +1176,15 @@ function CodeEditorPanel({
         applyRemoteCursor(msg);
         return;
       }
+      if (type === 'scroll') {
+        // Mirror the partner's editor scroll position onto this side.
+        if (!syncEnabledRef.current) return;
+        applyRemoteScroll(
+          typeof msg.top === 'number' ? msg.top : 0,
+          typeof msg.left === 'number' ? msg.left : 0,
+        );
+        return;
+      }
     });
     return off;
   }, [
@@ -1169,7 +1195,8 @@ function CodeEditorPanel({
     sendHello, 
     flashIncoming, 
     markPartnerTyping, 
-    keepCursorAlive
+    keepCursorAlive,
+    applyRemoteScroll
   ]);
 
   // Greet (and reset) whenever the data channel opens / closes.
@@ -1218,6 +1245,35 @@ function CodeEditorPanel({
     }
   }, [sendCursor]);
 
+  // Publish the editor's scroll position so the partner's viewport follows.
+  const sendScroll = useCallback(() => {
+    if (!syncEnabledRef.current) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    sendCollab({
+      t: 'scroll',
+      top: editor.getScrollTop?.() ?? 0,
+      left: editor.getScrollLeft?.() ?? 0,
+    });
+  }, [sendCollab]);
+
+  // Throttled scroll publisher (with a trailing send so the final resting
+  // position is always delivered).
+  const scheduleScroll = useCallback(() => {
+    if (applyingRemoteScrollRef.current) return;  // remote-applied scroll — never echo
+    const now = Date.now();
+    if (scrollTrailingRef.current) clearTimeout(scrollTrailingRef.current);
+    if (now - scrollThrottleRef.current >= 60) {
+      scrollThrottleRef.current = now;
+      sendScroll();
+    } else {
+      scrollTrailingRef.current = setTimeout(() => {
+        scrollThrottleRef.current = Date.now();
+        sendScroll();
+      }, 60);
+    }
+  }, [sendScroll]);
+
   const handleEditorMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -1239,7 +1295,8 @@ function CodeEditorPanel({
     }
     editor.onDidChangeCursorPosition?.(scheduleCursor);
     editor.onDidChangeCursorSelection?.(scheduleCursor);
-  }, [scheduleCursor]);
+    editor.onDidScrollChange?.(scheduleScroll);
+  }, [scheduleCursor, scheduleScroll]);
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     const code = value ?? '';
@@ -1305,6 +1362,7 @@ function CodeEditorPanel({
   useEffect(() => () => {
     cursorMgrRef.current?.dispose();
     if (cursorTrailingRef.current) clearTimeout(cursorTrailingRef.current);
+    if (scrollTrailingRef.current) clearTimeout(scrollTrailingRef.current);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
     if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
@@ -1514,6 +1572,13 @@ function CodeEditorPanel({
             padding: { top: 12, bottom: 12 },
             renderLineHighlight: 'gutter',
             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              verticalScrollbarSize: 12,
+              horizontalScrollbarSize: 12,
+              useShadows: false,
+            },
           }}
         />
       </div>
