@@ -2905,9 +2905,8 @@ function CollaborationArena({
     const off = onCollab((msg) => {
       if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
       if(msg?.t === 'action' && msg.action === 'chat-drawer-close') {
-        console.log("wdddddddddddddddddddddd.."){
-          setChatOpen(false)
-        }
+        console.log("wdddddddddddddddddddddd..")
+        setChatOpen(false)
       };
     });
     return off;
