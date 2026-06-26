@@ -35,6 +35,7 @@ import {
   Terminal,
   RefreshCw,
   X,
+  MessageCircle,
 } from 'lucide-react';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
@@ -106,6 +107,12 @@ const TOPICS: Topic[] = [
       'Maximum Product Subarray',
       'Subarray Sum K',
       'Trapping Rain Water',
+      'Recursive Bubble',
+      'Sort Even-Odd',
+      'Bubble on Strings',
+      'Detect Sorted',
+      'Bubble K Passes',
+      'Sort by Parity',
     ]),
   },
   {
@@ -125,6 +132,12 @@ const TOPICS: Topic[] = [
       'Zig-Zag',
       'Hollow Diamond',
       'Floyd Triangle',
+      'Recursive Bubble',
+      'Sort Even-Odd',
+      'Bubble on Strings',
+      'Detect Sorted',
+      'Bubble K Passes',
+      'Sort by Parity',
     ]),
   },
   {
@@ -144,6 +157,12 @@ const TOPICS: Topic[] = [
       'Word Search',
       'Combination Sum',
       'Palindrome Partition',
+      'Recursive Bubble',
+      'Sort Even-Odd',
+      'Bubble on Strings',
+      'Detect Sorted',
+      'Bubble K Passes',
+      'Sort by Parity',
     ]),
   },
   {
@@ -163,6 +182,12 @@ const TOPICS: Topic[] = [
       'Wiggle Sort',
       'Custom Comparator',
       'Sort Matrix',
+      'Recursive Bubble',
+      'Sort Even-Odd',
+      'Bubble on Strings',
+      'Detect Sorted',
+      'Bubble K Passes',
+      'Sort by Parity',
     ]),
   },
   {
@@ -176,6 +201,12 @@ const TOPICS: Topic[] = [
       'Count Swaps',
       'Sort Booleans',
       'Bubble Descending',
+      'Recursive Bubble',
+      'Sort Even-Odd',
+      'Bubble on Strings',
+      'Detect Sorted',
+      'Bubble K Passes',
+      'Sort by Parity',
       'Recursive Bubble',
       'Sort Even-Odd',
       'Bubble on Strings',
@@ -220,6 +251,7 @@ export default function QuickSolvePage() {
   const [solved, setSolved] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Question | null>(null);
   const [draft, setDraft] = useState('');
+  const [showChat, setShowChat] = useState(false);
 
   // ---- Code editor state ----
   const [language, setLanguage] = useState<LangId>('javascript');
@@ -346,8 +378,26 @@ export default function QuickSolvePage() {
     <div className="flex h-screen w-full overflow-hidden bg-linear-to-br from-[#0b1622] via-casino-navy to-[#0b1622] text-zinc-100">
       {/* ============ LEFT SIDEBAR ============ */}
       <aside className="flex w-75 shrink-0 flex-col gap-3 border-r border-white/5 bg-casino-navy/70 p-3">
-        {/* You + Partner (square tiles) */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Partner (top) + You (bottom) — square tiles, stacked */}
+        <div className="flex flex-col gap-2">
+          {/* Partner */}
+          <VideoTile
+            label="Partner"
+            square
+            accent="from-fuchsia-500/20 to-purple-500/10"
+            ring="ring-fuchsia-500/40"
+            videoRef={remoteVideoRef}
+            placeholder={
+              status === 'matched'
+                ? 'Connecting…'
+                : status === 'queued'
+                ? 'Waiting…'
+                : status === 'partner_left'
+                ? 'Rematching…'
+                : 'Press Start'
+            }
+          />
+
           {/* You */}
           <VideoTile
             label="You"
@@ -368,24 +418,6 @@ export default function QuickSolvePage() {
                   off={<VideoOff size={14} />}
                 />
               </div>
-            }
-          />
-
-          {/* Partner */}
-          <VideoTile
-            label="Partner"
-            square
-            accent="from-fuchsia-500/20 to-purple-500/10"
-            ring="ring-fuchsia-500/40"
-            videoRef={remoteVideoRef}
-            placeholder={
-              status === 'matched'
-                ? 'Connecting…'
-                : status === 'queued'
-                ? 'Waiting…'
-                : status === 'partner_left'
-                ? 'Rematching…'
-                : 'Press Start'
             }
           />
         </div>
@@ -424,15 +456,70 @@ export default function QuickSolvePage() {
           )}
         </div>
 
+        {/* Chat button */}
+        <button
+          onClick={() => setShowChat(true)}
+          className="flex items-center justify-center gap-2 rounded-lg bg-sky-500/15 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/30 transition hover:bg-sky-500/25"
+        >
+          <MessageCircle size={16} /> Chat
+          {messages.length > 0 && (
+            <span className="ml-1 rounded-full bg-sky-400 px-1.5 text-[10px] font-bold text-black">
+              {messages.length}
+            </span>
+          )}
+        </button>
+
         {mediaError && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
             {mediaError}
           </div>
         )}
-
-        {/* Chat */}
-        <ChatPanel messages={messages} draft={draft} setDraft={setDraft} onSend={handleSend} disabled={status !== 'matched'} />
       </aside>
+
+      {/* Chat popup */}
+      <AnimatePresence>
+        {showChat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+            onClick={() => setShowChat(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-[70vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-casino-navy shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={16} className="text-sky-400" />
+                  <span className="text-sm font-bold">Chat</span>
+                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-2 py-0.5 text-[10px]">
+                    <span className={`size-1.5 rounded-full ${statusMeta.dot}`} />
+                    {statusMeta.text}
+                  </span>
+                </div>
+                <button onClick={() => setShowChat(false)} className="text-white/40 hover:text-white" title="Close chat">
+                  <X size={18} />
+                </button>
+              </div>
+              <ChatPanel
+                messages={messages}
+                draft={draft}
+                setDraft={setDraft}
+                onSend={handleSend}
+                disabled={status !== 'matched'}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ============ RIGHT MAIN ============ */}
       <main className="flex min-w-0 flex-1 flex-col gap-3 p-4">
@@ -758,7 +845,7 @@ interface VideoTileProps {
 
 function VideoTile({ label, accent, ring, videoRef, muted, mirrored, square, placeholder, overlay, badge }: VideoTileProps) {
   return (
-    <div className={`relative ${square ? 'aspect-square' : 'aspect-video'} w-full overflow-hidden rounded-xl bg-linear-to-br ${accent} ring-1 ${ring}`}>
+    <div className={`relative ${square ? 'aspect-square' : 'aspect-video'} w-full overflow-hidden bg-linear-to-br ${accent} ring-1 ${ring}`}>
       <video
         ref={videoRef}
         autoPlay
@@ -824,8 +911,7 @@ function ChatPanel({
   disabled: boolean;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-white/5 bg-white/3">
-      <div className="border-b border-white/5 px-3 py-2 text-xs font-semibold text-zinc-400">Chat area</div>
+    <div className="flex min-h-0 flex-1 flex-col bg-white/3">
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-2.5">
         {messages.length === 0 ? (
           <p className="m-auto text-center text-[11px] text-zinc-600">
