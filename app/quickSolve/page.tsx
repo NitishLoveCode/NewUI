@@ -377,7 +377,7 @@ export default function QuickSolvePage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-linear-to-br from-[#0b1622] via-casino-navy to-[#0b1622] text-zinc-100">
       {/* ============ LEFT SIDEBAR ============ */}
-      <aside className="flex w-75 shrink-0 flex-col gap-3 overflow-hidden border-r border-white/5 bg-casino-navy/70 p-3">
+      <aside className="flex w-75 shrink-0 flex-col gap-3 overflow-y-auto border-r border-white/5 bg-casino-navy/70 p-3">
         {/* Partner (top) + You (bottom) — square tiles, stacked */}
         <div className="mx-auto flex w-[97%] overflow-hidden shrink-0 flex-col gap-2">
           {/* Partner */}
@@ -761,7 +761,7 @@ export default function QuickSolvePage() {
                     <span className="text-[11px] font-semibold text-white/50">Console</span>
                   </div>
                   <button onClick={() => setShowTerminal(false)} className="text-white/30 hover:text-white/70" title="Close console">
-                    <X size={12} />
+                    <X size={18} text-bold />
                   </button>
                 </div>
                 <div className="flex-1 p-3 font-mono text-xs space-y-0.5 overflow-auto">
