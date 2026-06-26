@@ -17,7 +17,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
+import { useRunCodeMutation } from '@/stores/api';
 import {
   Mic,
   MicOff,
@@ -30,22 +32,25 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
-  Play as PlayIcon,
   Terminal,
-  Loader2,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
-// Languages supported by /api/v1/run-code (Judge0).
+// Languages supported by the nodeServer / Piston backend. The `id` doubles as
+// the Piston language name, so no extra mapping is needed at call time.
 const LANGUAGES = [
-  { id: 'javascript', monaco: 'javascript', label: 'JavaScript', sample: 'console.log("Hello, partner!");' },
-  { id: 'python', monaco: 'python', label: 'Python', sample: 'print("Hello, partner!")' },
-  { id: 'java', monaco: 'java', label: 'Java', sample: 'class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, partner!");\n  }\n}' },
-  { id: 'cpp', monaco: 'cpp', label: 'C++', sample: '#include <iostream>\nint main() {\n  std::cout << "Hello, partner!";\n  return 0;\n}' },
+  { id: 'javascript', monaco: 'javascript', label: 'JavaScript', icon: '⚙️', color: '#f7df1e', file: 'solution.js', sample: 'console.log("Hello, partner!");' },
+  { id: 'python', monaco: 'python', label: 'Python', icon: '🐍', color: '#3776ab', file: 'solution.py', sample: 'print("Hello, partner!")' },
+  { id: 'java', monaco: 'java', label: 'Java', icon: '☕', color: '#007396', file: 'Main.java', sample: 'class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, partner!");\n  }\n}' },
+  { id: 'cpp', monaco: 'cpp', label: 'C++', icon: '⬚', color: '#00599c', file: 'solution.cpp', sample: '#include <iostream>\nint main() {\n  std::cout << "Hello, partner!";\n  return 0;\n}' },
 ] as const;
 
 type LangId = (typeof LANGUAGES)[number]['id'];
+
+type TerminalLine = { text: string; color: string };
 
 // ---------------------------------------------------------------------------
 // Sample DSA content. Swap with API/store data when wired to the backend.
@@ -219,10 +224,16 @@ export default function QuickSolvePage() {
   // ---- Code editor state ----
   const [language, setLanguage] = useState<LangId>('javascript');
   const [code, setCode] = useState<string>(LANGUAGES[0].sample);
-  const [output, setOutput] = useState<string>('');
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
+  const [showTerminal, setShowTerminal] = useState(true);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [runCodeRequest] = useRunCodeMutation();
   // Guards against echoing a remote update straight back to the partner.
   const applyingRemoteRef = useRef(false);
+
+  const langOption = LANGUAGES.find((l) => l.id === language) ?? LANGUAGES[0];
 
   const inSession = status === 'matched' || status === 'queued' || status === 'partner_left';
   const statusMeta = STATUS_META[status] ?? STATUS_META.idle;
@@ -244,6 +255,7 @@ export default function QuickSolvePage() {
       const lang = LANGUAGES.find((l) => l.id === id) ?? LANGUAGES[0];
       setLanguage(id);
       setCode(lang.sample);
+      setShowLangMenu(false);
       sendCollab({ type: 'code', code: lang.sample, language: id });
     },
     [sendCollab]
@@ -266,35 +278,52 @@ export default function QuickSolvePage() {
   }, [onCollab]);
 
   const runCode = useCallback(async () => {
+    if (isRunning) return;
     setIsRunning(true);
-    setOutput('Running…');
+    setShowTerminal(true);
+    setTerminalLines([{ text: `> Running ${langOption.label}…`, color: '#94a3b8' }]);
     try {
-      const res = await fetch('/api/v1/run-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language, code }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setOutput(data.error ?? `Error ${res.status}`);
-        return;
+      // nodeServer / Piston backend. Our LangId values are the names Piston
+      // expects directly, so no mapping is needed here.
+      const data = await runCodeRequest({ language, code }).unwrap();
+
+      const lines: TerminalLine[] = [];
+      if (data.status === 'compile_error') {
+        lines.push({ text: '── Compile errors ──', color: '#334155' });
+        (data.error ?? '').split('\n').forEach((l) => l && lines.push({ text: l, color: '#f87171' }));
+      } else if (data.status === 'error') {
+        if (data.output?.trim()) {
+          lines.push({ text: '── Output ──', color: '#334155' });
+          data.output.split('\n').forEach((l) => lines.push({ text: l, color: '#e2e8f0' }));
+        }
+        lines.push({ text: '── Stderr ──', color: '#334155' });
+        (data.error ?? '').split('\n').forEach((l) => l && lines.push({ text: l, color: '#f87171' }));
+      } else {
+        if (data.output?.trim()) {
+          lines.push({ text: '── Output ──', color: '#334155' });
+          data.output.split('\n').forEach((l) => lines.push({ text: l, color: '#e2e8f0' }));
+        } else {
+          lines.push({ text: '(no output)', color: '#64748b' });
+        }
       }
-      const compileErr = data.compile?.stderr?.trim();
-      const stdout = data.run?.stdout ?? '';
-      const stderr = data.run?.stderr ?? '';
-      const parts = [
-        compileErr ? `⚠️ Compile:\n${compileErr}` : '',
-        stdout,
-        stderr ? `stderr:\n${stderr}` : '',
-        data.status ? `\n— ${data.status}${data.time ? ` · ${data.time}s` : ''}` : '',
-      ].filter(Boolean);
-      setOutput(parts.join('\n').trim() || 'No output');
+
+      lines.push({ text: '──────────────────────────────────', color: '#334155' });
+      lines.push({ text: `time: ${data.time}  ·  memory: ${data.memory}`, color: '#64748b' });
+      const passed = data.status === 'success';
+      lines.push({
+        text: passed ? '✓ Process exited successfully' : `✗ Execution failed (${data.status})`,
+        color: passed ? '#00e676' : '#f87171',
+      });
+      setTerminalLines((prev) => [...prev, ...lines]);
     } catch (e) {
-      setOutput(e instanceof Error ? e.message : 'Failed to run code');
+      const message =
+        (e as { data?: { error?: string } })?.data?.error ??
+        (e instanceof Error ? e.message : 'Network error.');
+      setTerminalLines((prev) => [...prev, { text: `✗ ${message}`, color: '#f87171' }]);
     } finally {
       setIsRunning(false);
     }
-  }, [language, code]);
+  }, [isRunning, language, code, langOption.label, runCodeRequest]);
 
   const totalQuestions = useMemo(
     () => TOPICS.reduce((n, t) => n + t.questions.length, 0),
@@ -459,95 +488,251 @@ export default function QuickSolvePage() {
           ))}
         </div>
 
-        {/* Code editor workspace */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/5 bg-white/2">
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-3 py-2">
-            {selected ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{selected.title}</span>
-                <span className={`text-[11px] font-semibold ${DIFF_COLOR[selected.difficulty]}`}>
-                  {selected.difficulty}
-                </span>
-              </div>
-            ) : (
-              <span className="text-sm font-semibold text-zinc-400">Code Editor</span>
-            )}
+        {/* Code editor workspace — VS Code style */}
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#0d1117' }}
+        >
+          {/* Top bar */}
+          <div
+            className="flex flex-wrap items-center gap-2 px-3 py-2 border-b"
+            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#161b22' }}
+          >
+            {/* Traffic lights */}
+            <div className="flex gap-1.5 items-center">
+              <div className="w-3 h-3 rounded-full bg-red-500/70" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+              <div className="w-3 h-3 rounded-full bg-green-500/70" />
+            </div>
 
-            {collabReady && (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                <span className="size-1.5 rounded-full bg-emerald-400" /> live sync
+            <span className="ml-1 font-mono text-xs text-white/35">{langOption.file}</span>
+
+            {selected && (
+              <span className={`text-[11px] font-semibold ${DIFF_COLOR[selected.difficulty]}`}>
+                · {selected.title}
               </span>
             )}
 
-            <div className="ml-auto flex items-center gap-2">
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value as LangId)}
-                className="rounded-md border border-white/10 bg-[#0b1622] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-emerald-500/40"
+            {/* Language selector */}
+            <div className="relative">
+              <motion.button
+                onClick={() => setShowLangMenu((v) => !v)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                style={{ background: `${langOption.color}18`, border: `1px solid ${langOption.color}40`, color: langOption.color }}
               >
-                {LANGUAGES.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+                <span>{langOption.icon}</span>
+                <span>{langOption.label}</span>
+                <motion.span animate={{ rotate: showLangMenu ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-[10px]">
+                  ▼
+                </motion.span>
+              </motion.button>
 
-              {selected && (
-                <button
-                  onClick={() => toggleSolved(selected.id)}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition
-                    ${
-                      solved.has(selected.id)
-                        ? 'bg-emerald-500 text-black'
-                        : 'bg-white/5 text-zinc-300 ring-1 ring-white/10 hover:bg-white/10'
-                    }`}
-                >
-                  {solved.has(selected.id) ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                  {solved.has(selected.id) ? 'Solved' : 'Mark Solved'}
-                </button>
-              )}
-
-              <button
-                onClick={runCode}
-                disabled={isRunning}
-                className="flex items-center gap-1.5 rounded-md bg-linear-to-r from-emerald-500 to-teal-600 px-3 py-1.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
-              >
-                {isRunning ? <Loader2 size={14} className="animate-spin" /> : <PlayIcon size={14} />}
-                {isRunning ? 'Running…' : 'Run'}
-              </button>
+              <AnimatePresence>
+                {showLangMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                    transition={{ duration: 0.14 }}
+                    className="absolute top-full mt-1 left-0 z-20 rounded-xl overflow-hidden shadow-2xl"
+                    style={{ background: '#0a0f1a', border: '1px solid rgba(255,255,255,0.1)', minWidth: 140 }}
+                  >
+                    {LANGUAGES.map((lang) => (
+                      <motion.button
+                        key={lang.id}
+                        onClick={() => handleLanguageChange(lang.id)}
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left"
+                        style={{ color: lang.id === language ? lang.color : 'rgba(255,255,255,0.55)' }}
+                      >
+                        <span>{lang.icon}</span>
+                        <span>{lang.label}</span>
+                        {lang.id === language && <CheckCircle2 size={11} className="ml-auto" />}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
 
-          {/* Editor + output */}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <MonacoEditor
-                language={LANGUAGES.find((l) => l.id === language)?.monaco ?? 'javascript'}
-                value={code}
-                onChange={handleCodeChange}
-                theme="vs-dark"
-                options={{
-                  fontSize: 14,
-                  minimap: { enabled: false },
-                  tabSize: 2,
-                  automaticLayout: true,
-                  scrollBeyondLastLine: false,
-                  fontFamily: "'Fira Code', 'Monaco', monospace",
-                }}
+            {/* Font size */}
+            <div
+              className="flex items-center gap-1 px-1.5 py-1 rounded-lg"
+              style={{ background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.18)' }}
+            >
+              <motion.button
+                onClick={() => setFontSize((s) => Math.max(10, s - 1))}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="w-5 h-5 flex items-center justify-center rounded text-xs font-bold"
+                style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
+              >
+                −
+              </motion.button>
+              <span className="text-xs font-bold w-5 text-center" style={{ color: '#818cf8' }}>
+                {fontSize}
+              </span>
+              <motion.button
+                onClick={() => setFontSize((s) => Math.min(22, s + 1))}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="w-5 h-5 flex items-center justify-center rounded text-xs font-bold"
+                style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
+              >
+                +
+              </motion.button>
+            </div>
+
+            <div className="flex-1" />
+
+            {/* Live sync pill */}
+            <div
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold"
+              style={{
+                background: collabReady ? 'rgba(74,222,128,0.12)' : 'rgba(148,163,184,0.08)',
+                border: `1px solid ${collabReady ? 'rgba(74,222,128,0.35)' : 'rgba(148,163,184,0.2)'}`,
+                color: collabReady ? '#4ade80' : 'rgba(148,163,184,0.7)',
+              }}
+              title={collabReady ? 'Live sync with partner is on' : 'Connect with a partner to start live sync'}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ background: collabReady ? '#4ade80' : '#94a3b8', boxShadow: collabReady ? '0 0 6px #4ade80' : 'none' }}
               />
-            </div>
-
-            {/* Output console */}
-            <div className="h-36 shrink-0 overflow-auto border-t border-white/5 bg-[#0b1622] p-3">
-              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500">
-                <Terminal size={12} /> Output
-              </div>
-              <pre className="whitespace-pre-wrap font-mono text-xs text-zinc-300">
-                {output || 'Run your code to see the output here.'}
-              </pre>
+              {collabReady ? 'Live sync' : 'Solo'}
             </div>
           </div>
+
+          {/* Monaco Editor */}
+          <div className="flex-1 overflow-hidden" style={{ background: '#0d1117' }}>
+            <MonacoEditor
+              height="100%"
+              language={langOption.monaco}
+              value={code}
+              onChange={handleCodeChange}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: fontSize,
+                lineHeight: fontSize + 10,
+                wordWrap: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                padding: { top: 12, bottom: 12 },
+                renderLineHighlight: 'gutter',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                scrollbar: {
+                  vertical: 'visible',
+                  horizontal: 'visible',
+                  verticalScrollbarSize: 12,
+                  horizontalScrollbarSize: 12,
+                  useShadows: false,
+                },
+              }}
+            />
+          </div>
+
+          {/* Bottom bar */}
+          <div
+            className="flex items-center gap-2 px-3 py-2 border-t"
+            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#161b22' }}
+          >
+            <motion.button
+              onClick={() => setShowTerminal((v) => !v)}
+              whileHover={{ scale: 1.04 }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+              style={{
+                background: showTerminal ? 'rgba(74,222,128,0.14)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${showTerminal ? 'rgba(74,222,128,0.3)' : 'transparent'}`,
+                color: showTerminal ? '#4ade80' : 'rgba(255,255,255,0.4)',
+              }}
+            >
+              <Terminal size={12} />
+              Console
+            </motion.button>
+
+            <div className="flex-1" />
+
+            {selected && (
+              <motion.button
+                onClick={() => toggleSolved(selected.id)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+                style={{
+                  background: solved.has(selected.id) ? 'rgba(0,230,118,0.18)' : 'rgba(255,255,255,0.05)',
+                  color: solved.has(selected.id) ? '#00e676' : 'rgba(255,255,255,0.6)',
+                  border: `1px solid ${solved.has(selected.id) ? '#00e67640' : 'rgba(255,255,255,0.12)'}`,
+                }}
+              >
+                {solved.has(selected.id) ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+                {solved.has(selected.id) ? 'Solved' : 'Mark Solved'}
+              </motion.button>
+            )}
+
+            <motion.button
+              onClick={runCode}
+              disabled={isRunning}
+              whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(74,222,128,0.4)' }}
+              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+              style={{
+                background: isRunning ? 'rgba(74,222,128,0.18)' : 'linear-gradient(135deg, #166534, #15803d)',
+                color: '#4ade80',
+                border: '1px solid #22c55e30',
+              }}
+            >
+              {isRunning ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                  <RefreshCw size={11} />
+                </motion.div>
+              ) : (
+                <Play size={11} />
+              )}
+              Run
+            </motion.button>
+          </div>
+
+          {/* Console */}
+          <AnimatePresence>
+            {showTerminal && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 180 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden border-t flex flex-col"
+                style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0a0f1a' }}
+              >
+                <div
+                  className="flex items-center justify-between px-3 py-1.5 border-b flex-shrink-0"
+                  style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Terminal size={11} style={{ color: '#4ade80' }} />
+                    <span className="text-[11px] font-semibold text-white/50">Console</span>
+                  </div>
+                  <button onClick={() => setShowTerminal(false)} className="text-white/30 hover:text-white/70" title="Close console">
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="flex-1 p-3 font-mono text-xs space-y-0.5 overflow-auto">
+                  {terminalLines.length === 0 ? (
+                    <span className="text-white/20">Click Run to execute…</span>
+                  ) : (
+                    terminalLines.map((line, i) => (
+                      <div key={i} style={{ color: line.color }} className="whitespace-pre-wrap">
+                        {line.text}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
     </div>
