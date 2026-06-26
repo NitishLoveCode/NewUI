@@ -383,6 +383,7 @@ export default function QuickSolvePage() {
           {/* Partner */}
           <VideoTile
             label="Partner"
+            mirrored
             square
             accent="from-fuchsia-500/20 to-purple-500/10"
             ring="ring-fuchsia-500/40"
