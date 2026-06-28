@@ -58,7 +58,7 @@ export default function SocialLoginButtons() {
   ];
 
   return (
-    <div className="flex gap-2 w-full md:w-auto">
+    <div className="flex gap-2 w-full md:w-auto ">
       {buttons.map(btn => (
         <motion.button
           key={btn.label}
@@ -66,7 +66,9 @@ export default function SocialLoginButtons() {
           whileTap={{ scale: 0.96 }}
           onClick={btn.onClick}
           disabled={loading && btn.label === 'Google'}
-          className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm text-white disabled:opacity-50"
+          className="flex-1 md:flex-none flex items-center 
+          justify-center gap-2 px-4 py-2.5 rounded-lg
+           font-medium text-sm text-white disabled:opacity-50"
           style={{ backgroundColor: '#2f4553', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           {btn.icon}
