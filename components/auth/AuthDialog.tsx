@@ -250,7 +250,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                           className="w-full py-3 rounded-xl text-sm font-bold text-black"
                           style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
                         >
-                          Login to Stake
+                          Login
                         </motion.button>
 
                         {/* Divider */}
@@ -444,7 +444,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                           className="w-full py-3 rounded-xl text-sm font-bold text-black"
                           style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
                         >
-                          Create Free Account 🚀
+                          Create Account 🚀
                         </motion.button>
 
                         {/* Divider */}
