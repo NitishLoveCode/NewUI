@@ -18,6 +18,7 @@ import {
 } from '@/stores/codingPractice/activeStepSlice';
 import { useGetDsaQuestionsQuery, useRunCodeMutation } from '@/stores/api';
 import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
+import { useSidebar } from '@/hooks/useSidebar';
 import { RemoteCursorManager, randomCollabIdentity } from '@/lib/collabEditor';
 
 type SupportedLanguage = 'js' | 'python' | 'java' | 'cpp';
@@ -676,7 +677,7 @@ function ConnectionSearching({ isAnonymous, onCancel }: { isAnonymous: boolean; 
 // ─── Problem Statement Card ───────────────────────────────────────────────────
 
 function ProblemStatement() {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
   const questionId = activeProblemNumber?.toString() ?? null;
   const { data: questionData } = useGetDsaQuestionsQuery(questionId!, {
@@ -3170,6 +3171,12 @@ function CollaborationArena({
 function CodingPracticeContent() {
   const dispatch = useAppDispatch();
   const activeProblemNumber = useAppSelector(s => s.activeStep.activeProblemNumber);
+
+  // Always collapse the sidebar when entering this page.
+  const { collapse } = useSidebar();
+  useEffect(() => {
+    collapse();
+  }, [collapse]);
 
   const [stepParam, setStepParam] = useState<string | null>(null);
 

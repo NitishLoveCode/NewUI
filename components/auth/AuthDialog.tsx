@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, Mail, Lock, User, Zap } from 'lucide-react';
+import { X, Mail, Lock, Zap, ShieldCheck } from 'lucide-react';
 import SocialLoginButtons from '@/components/hero/SocialLoginButtons';
 
 interface AuthDialogProps {
@@ -16,14 +16,10 @@ const GREEN_GLOW = 'rgba(0,230,118,0.5)';
 
 export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }: AuthDialogProps) {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setActiveTab(defaultTab);
-      setShowPass(false);
-      setShowConfirm(false);
     }
   }, [isOpen, defaultTab]);
 
@@ -34,15 +30,6 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
     border: '1px solid rgba(255,255,255,0.1)',
     color: '#fff',
   };
-
-  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = 'rgba(0,230,118,0.55)';
-    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,230,118,0.09)';
-  }
-  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-    e.currentTarget.style.boxShadow = 'none';
-  }
 
   return (
     <AnimatePresence>
@@ -172,299 +159,116 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
               {/* Form body */}
               <div className="relative px-6 pb-6">
                 <AnimatePresence mode="wait" initial={false}>
-                  {activeTab === 'login' ? (
-                    <motion.div
-                      key="login-form"
-                      initial={{ opacity: 0, x: -18 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 18 }}
-                      transition={{ duration: 0.18 }}
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    {/* Google-only notice */}
+                    <div
+                      className="flex items-start gap-3 px-3.5 py-3 rounded-xl mb-5"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,200,83,0.06))',
+                        border: '1px solid rgba(0,230,118,0.22)',
+                      }}
                     >
-                      <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                        {/* Email */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                            Email Address
-                          </label>
-                          <div className="relative">
-                            <Mail
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type="email"
-                              placeholder="you@example.com"
-                              className={`${inputClass} pl-9 pr-4`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                          </div>
-                        </div>
+                      <ShieldCheck
+                        size={18}
+                        className="flex-shrink-0 mt-0.5"
+                        style={{ color: GREEN }}
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          {activeTab === 'login'
+                            ? 'Secure Google Login Only'
+                            : 'Secure Google Sign Up Only'}
+                        </p>
+                        <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: '#b1bad3' }}>
+                          To keep our collaborative coding community spam-free and your account
+                          safe, we only support {activeTab === 'login' ? 'logging in' : 'signing up'}{' '}
+                          with Google. It&apos;s faster, more secure, and no password to remember.
+                        </p>
+                      </div>
+                    </div>
 
-                        {/* Password */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                              Password
-                            </label>
-                            <button
-                              type="button"
-                              className="text-[11px] font-semibold"
-                              style={{ color: GREEN }}
-                            >
-                              Forgot password?
-                            </button>
-                          </div>
-                          <div className="relative">
-                            <Lock
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type={showPass ? 'text' : 'password'}
-                              placeholder="••••••••"
-                              className={`${inputClass} pl-9 pr-10`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPass(!showPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2"
-                              style={{ color: '#b1bad3' }}
-                            >
-                              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Submit */}
-                        <motion.button
-                          type="submit"
-                          whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${GREEN_GLOW}` }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full py-3 rounded-xl text-sm font-bold text-black"
-                          style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
-                        >
-                          Login
-                        </motion.button>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="flex-1 h-px"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                    {/* Disabled email/password preview */}
+                    <div className="space-y-3.5 opacity-50 pointer-events-none select-none">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail
+                            size={14}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{ color: '#b1bad3' }}
                           />
-                          <span className="text-xs" style={{ color: '#b1bad3' }}>
-                            or continue with
-                          </span>
-                          <div
-                            className="flex-1 h-px"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                          <input
+                            type="email"
+                            disabled
+                            placeholder="Email login disabled"
+                            className={`${inputClass} pl-9 pr-4`}
+                            style={inputBase}
                           />
                         </div>
+                      </div>
 
-                        <SocialLoginButtons />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock
+                            size={14}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{ color: '#b1bad3' }}
+                          />
+                          <input
+                            type="password"
+                            disabled
+                            placeholder="Password login disabled"
+                            className={`${inputClass} pl-9 pr-10`}
+                            style={inputBase}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-                        <p className="text-center text-xs" style={{ color: '#b1bad3' }}>
-                          No account?{' '}
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 my-5">
+                      <div
+                        className="flex-1 h-px"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                      />
+                      <span className="text-xs" style={{ color: '#b1bad3' }}>
+                        {activeTab === 'login' ? 'continue with' : 'sign up with'}
+                      </span>
+                      <div
+                        className="flex-1 h-px"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                      />
+                    </div>
+
+                    <SocialLoginButtons />
+
+                    <p className="text-center text-xs mt-5" style={{ color: '#b1bad3' }}>
+                      {activeTab === 'login' ? (
+                        <>
+                          New here?{' '}
                           <button
                             type="button"
                             onClick={() => setActiveTab('register')}
                             className="font-semibold"
                             style={{ color: GREEN }}
                           >
-                            Create one free
+                            Create an account
                           </button>
-                        </p>
-                      </form>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="register-form"
-                      initial={{ opacity: 0, x: 18 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -18 }}
-                      transition={{ duration: 0.18 }}
-                    >
-                      {/* Welcome bonus banner */}
-                      {/* <div
-                        className="flex items-center gap-3 px-3.5 py-3 rounded-xl mb-4"
-                        style={{
-                          background:
-                            'linear-gradient(135deg, rgba(0,230,118,0.13), rgba(0,200,83,0.07))',
-                          border: '1px solid rgba(0,230,118,0.22)',
-                        }}
-                      >
-                        <span className="text-2xl select-none">🎁</span>
-                        <div>
-                          <p className="text-xs font-bold text-white">100% Welcome Bonus</p>
-                          <p className="text-[11px]" style={{ color: '#b1bad3' }}>
-                            Get up to{' '}
-                            <span className="font-bold" style={{ color: GREEN }}>
-                              $1,000
-                            </span>{' '}
-                            on your first deposit
-                          </p>
-                        </div>
-                      </div> */}
-
-                      <form className="space-y-3.5" onSubmit={(e) => e.preventDefault()}>
-                        {/* Username */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                            Username
-                          </label>
-                          <div className="relative">
-                            <User
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type="text"
-                              placeholder="Choose a username"
-                              className={`${inputClass} pl-9 pr-4`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Email */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                            Email Address
-                          </label>
-                          <div className="relative">
-                            <Mail
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type="email"
-                              placeholder="you@example.com"
-                              className={`${inputClass} pl-9 pr-4`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Password */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                            Password
-                          </label>
-                          <div className="relative">
-                            <Lock
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type={showPass ? 'text' : 'password'}
-                              placeholder="At least 8 characters"
-                              className={`${inputClass} pl-9 pr-10`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPass(!showPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2"
-                              style={{ color: '#b1bad3' }}
-                            >
-                              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Confirm password */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium" style={{ color: '#b1bad3' }}>
-                            Confirm Password
-                          </label>
-                          <div className="relative">
-                            <Lock
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                              style={{ color: '#b1bad3' }}
-                            />
-                            <input
-                              type={showConfirm ? 'text' : 'password'}
-                              placeholder="Repeat your password"
-                              className={`${inputClass} pl-9 pr-10`}
-                              style={inputBase}
-                              onFocus={handleFocus}
-                              onBlur={handleBlur}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowConfirm(!showConfirm)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2"
-                              style={{ color: '#b1bad3' }}
-                            >
-                              {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Terms */}
-                        {/* <p className="text-[11px]" style={{ color: '#b1bad3' }}>
-                          By registering you agree to our{' '}
-                          <span
-                            className="font-semibold cursor-pointer"
-                            style={{ color: GREEN }}
-                          >
-                            Terms of Service
-                          </span>{' '}
-                          and{' '}
-                          <span
-                            className="font-semibold cursor-pointer"
-                            style={{ color: GREEN }}
-                          >
-                            Privacy Policy
-                          </span>
-                        </p> */}
-
-                        {/* Submit */}
-                        <motion.button
-                          type="submit"
-                          whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${GREEN_GLOW}` }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full py-3 rounded-xl text-sm font-bold text-black"
-                          style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
-                        >
-                          Create Account 🚀
-                        </motion.button>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="flex-1 h-px"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-                          />
-                          <span className="text-xs" style={{ color: '#b1bad3' }}>
-                            or sign up with
-                          </span>
-                          <div
-                            className="flex-1 h-px"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-                          />
-                        </div>
-
-                        <SocialLoginButtons />
-
-                        <p className="text-center text-xs" style={{ color: '#b1bad3' }}>
+                        </>
+                      ) : (
+                        <>
                           Already have an account?{' '}
                           <button
                             type="button"
@@ -474,10 +278,10 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                           >
                             Login
                           </button>
-                        </p>
-                      </form>
-                    </motion.div>
-                  )}
+                        </>
+                      )}
+                    </p>
+                  </motion.div>
                 </AnimatePresence>
               </div>
             </motion.div>

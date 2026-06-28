@@ -80,7 +80,7 @@ export default function Navbar({
               className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-colors"
               style={{ backgroundColor: 'rgba(0,230,118,0.15)', color: '#00e676' }}
             >
-              Casino
+              DSA
             </button>
             <button
               className="px-4 py-1.5 rounded-md text-sm font-semibold transition-colors"
