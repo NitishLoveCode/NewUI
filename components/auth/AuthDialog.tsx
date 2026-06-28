@@ -292,7 +292,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                       transition={{ duration: 0.18 }}
                     >
                       {/* Welcome bonus banner */}
-                      <div
+                      {/* <div
                         className="flex items-center gap-3 px-3.5 py-3 rounded-xl mb-4"
                         style={{
                           background:
@@ -311,7 +311,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                             on your first deposit
                           </p>
                         </div>
-                      </div>
+                      </div> */}
 
                       <form className="space-y-3.5" onSubmit={(e) => e.preventDefault()}>
                         {/* Username */}
@@ -419,7 +419,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                         </div>
 
                         {/* Terms */}
-                        <p className="text-[11px]" style={{ color: '#b1bad3' }}>
+                        {/* <p className="text-[11px]" style={{ color: '#b1bad3' }}>
                           By registering you agree to our{' '}
                           <span
                             className="font-semibold cursor-pointer"
@@ -434,7 +434,7 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                           >
                             Privacy Policy
                           </span>
-                        </p>
+                        </p> */}
 
                         {/* Submit */}
                         <motion.button
