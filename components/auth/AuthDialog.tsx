@@ -130,10 +130,10 @@ export default function AuthDialog({ isOpen, onClose, defaultTab = 'register' }:
                       className="text-lg font-bold italic leading-tight"
                       style={{ fontFamily: 'Georgia, serif', color: '#fff' }}
                     >
-                      Stake
+                      iLoveDsa.com
                     </p>
                     <p className="text-[10px] font-semibold" style={{ color: GREEN }}>
-                      World&apos;s #1 Online Casino
+                      World&apos;s #1 DSA Learning Platform
                     </p>
                   </div>
                 </div>

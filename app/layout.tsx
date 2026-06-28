@@ -24,8 +24,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stake - World's Largest Online Casino and Sportsbook",
-  description: "Play online casino games and sports betting at Stake.",
+  title: "DSA Learning Platform - World's No. 1",
+  description: "Learn Data Structures and Algorithms on the World's No. 1 DSA Learning Platform.",
 };
 
 export default function RootLayout({
