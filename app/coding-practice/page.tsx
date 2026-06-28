@@ -839,15 +839,13 @@ function ProblemStatement() {
 // ─── Code Editor Panel ────────────────────────────────────────────────────────
 
 function CodeEditorPanel({
-  codeRunState, terminalLines, onRun, onSubmit, showTerminal, onToggleTerminal, elapsed, isRecording,
+  codeRunState, terminalLines, onRun, onSubmit, elapsed, isRecording,
   connectionState, collabReady, sendCollab, onCollab,
 }: {
   codeRunState: 'idle' | 'running' | 'success';
   terminalLines: typeof TERMINAL_LINES;
   onRun: (payload: { code: string; language: SupportedLanguage }) => void;
   onSubmit: () => void;
-  showTerminal: boolean;
-  onToggleTerminal: () => void;
   elapsed: number;
   isRecording: boolean;
   connectionState: 'idle' | 'searching' | 'connected';
@@ -864,8 +862,13 @@ function CodeEditorPanel({
   const [language, setLanguage] = useState<SupportedLanguage>('js');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [editableCode, setEditableCode] = useState('');
+  // editableCode is intentionally a ref (not React state): updating state on
+  // every keystroke re-rendered this panel, which could reset Monaco's caret
+  // to the last line. The editor itself is the source of truth for the text.
+  const editableCodeRef = useRef('');
   const [fontSize, setFontSize] = useState(13);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [terminalHeight, setTerminalHeight] = useState(180);
   const starterCodes = questionData?.starterCode ?? [];
   const solutions = questionData?.solutions ?? [];
   const availableLanguages = useMemo(() => {
@@ -914,8 +917,27 @@ function CodeEditorPanel({
     }
   }, [availableLanguages, defaultLanguage, language]);
 
+  // Reset to the starter/template code when the problem or language changes.
+  // We push it imperatively into the model (instead of feeding a controlled
+  // `value` prop) so that normal typing never re-applies the document and
+  // bumps the caret to the last line.
   useEffect(() => {
-    setEditableCode(codeTemplate);
+    editableCodeRef.current = codeTemplate;
+    const editor = editorRef.current;
+    const model = editor?.getModel?.();
+    if (editor && model && model.getValue() !== codeTemplate) {
+      applyingRemoteRef.current = true;
+      try {
+        editor.executeEdits('template-reset', [{
+          range: model.getFullModelRange(),
+          text: codeTemplate,
+          forceMoveMarkers: true,
+        }]);
+        editor.setPosition?.({ lineNumber: 1, column: 1 });
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    }
   }, [codeTemplate, language, questionId]);
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
@@ -923,6 +945,10 @@ function CodeEditorPanel({
       setLanguage(newLang);
       setShowLangMenu(false);
       setShowCelebration(true);
+      // Mirror the switch to the partner while collaborating.
+      if (syncEnabledRef.current) {
+        sendCollab({ t: 'lang', lang: newLang, name: identityRef.current.name });
+      }
     }
   };
 
@@ -945,12 +971,21 @@ function CodeEditorPanel({
   const applyingRemoteRef = useRef(false);
   const dirtyRef = useRef(false);
   const identityRef = useRef(randomCollabIdentity());
-  const editableCodeRef = useRef('');
   const cursorThrottleRef = useRef(0);
   const cursorTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollThrottleRef = useRef(0);
+  const scrollTrailingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteScrollRef = useRef(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const partnerLineRef = useRef<number | null>(null);
+  const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest action handlers / language kept in refs so the inbound-message
+  // subscription can fire them without re-subscribing on every change.
+  const onRunRef = useRef(onRun);
+  const onSubmitRef = useRef(onSubmit);
+  const languageRef = useRef(language);
+  const availableLangsRef = useRef(availableLanguages);
 
   const [syncEnabled, setSyncEnabled] = useState(true);
   const syncEnabledRef = useRef(true);
@@ -959,9 +994,22 @@ function CodeEditorPanel({
   const [incomingPulse, setIncomingPulse] = useState(false);
 
   useEffect(() => { syncEnabledRef.current = syncEnabled; }, [syncEnabled]);
-  useEffect(() => { editableCodeRef.current = editableCode; }, [editableCode]);
+  useEffect(() => { onRunRef.current = onRun; }, [onRun]);
+  useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
+  useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => { availableLangsRef.current = availableLanguages; }, [availableLanguages]);
 
   const isCollabLive = connectionState === 'connected' && collabReady;
+
+  // Keep the partner's caret visible only while they're active: any cursor or
+  // code activity (re)arms a 3s timer that hides their caret once they go idle.
+  const keepCursorAlive = useCallback(() => {
+    if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
+    cursorHideTimerRef.current = setTimeout(() => {
+      cursorMgrRef.current?.clear();
+      partnerLineRef.current = null;
+    }, 3000);
+  }, []);
 
   const flashIncoming = useCallback(() => {
     setIncomingPulse(true);
@@ -975,25 +1023,44 @@ function CodeEditorPanel({
     typingTimerRef.current = setTimeout(() => setPartnerTyping(false), 1200);
   }, []);
 
-  // Apply a full-document edit coming from the partner without echoing it back
-  // and while preserving our own caret/selection as best as possible.
+  // Apply a partner edit as a MINIMAL diff (shared prefix/suffix preserved)
+  // rather than replacing the whole document. A full replace blew away the
+  // viewer's caret/scroll/undo and dumped the cursor on the last line.
   const applyRemoteCode = useCallback((code: string) => {
     const editor = editorRef.current;
-    if (!editor) { setEditableCode(code); return; }
+    if (!editor) { editableCodeRef.current = code; return; }
     const model = editor.getModel?.();
-    if (!model || model.getValue() === code) return;
+    if (!model) { editableCodeRef.current = code; return; }
+    const current = model.getValue();
+    if (current === code) { editableCodeRef.current = code; return; }
     applyingRemoteRef.current = true;
     try {
-      const selections = editor.getSelections?.();
+      // Longest common prefix.
+      let p = 0;
+      const max = Math.min(current.length, code.length);
+      while (p < max && current.charCodeAt(p) === code.charCodeAt(p)) p++;
+      // Longest common suffix (not overlapping the prefix).
+      let s = 0;
+      while (
+        s < max - p &&
+        current.charCodeAt(current.length - 1 - s) === code.charCodeAt(code.length - 1 - s)
+      ) s++;
+      const startPos = model.getPositionAt(p);
+      const endPos = model.getPositionAt(current.length - s);
       editor.executeEdits('collab-remote', [{
-        range: model.getFullModelRange(),
-        text: code,
+        range: {
+          startLineNumber: startPos.lineNumber,
+          startColumn: startPos.column,
+          endLineNumber: endPos.lineNumber,
+          endColumn: endPos.column,
+        },
+        text: code.slice(p, code.length - s),
         forceMoveMarkers: true,
       }]);
-      if (selections) editor.setSelections(selections);
     } finally {
       applyingRemoteRef.current = false;
     }
+    editableCodeRef.current = code;
   }, []);
 
   const applyRemoteCursor = useCallback((msg: CollabMessage) => {
@@ -1007,6 +1074,21 @@ function CodeEditorPanel({
       name: (msg.name as string) ?? 'Partner',
       color: (msg.color as string) ?? '#f59e0b',
     });
+    keepCursorAlive();
+  }, [keepCursorAlive]);
+
+  // Apply the partner's scroll position, echo-guarded so it doesn't bounce back.
+  const applyRemoteScroll = useCallback((top: number, left: number) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    applyingRemoteScrollRef.current = true;
+    try {
+      editor.setScrollTop?.(top);
+      editor.setScrollLeft?.(left);
+    } finally {
+      // Release the guard after the scroll event has fired.
+      requestAnimationFrame(() => { applyingRemoteScrollRef.current = false; });
+    }
   }, []);
 
   const sendHello = useCallback((reply: boolean) => {
@@ -1016,8 +1098,30 @@ function CodeEditorPanel({
       name: identityRef.current.name,
       color: identityRef.current.color,
       code: editableCodeRef.current,
+      lang: languageRef.current,
     });
   }, [sendCollab]);
+
+  // Adopt a language chosen by the partner (no re-broadcast). Switching the
+  // language resets the editor to that language's starter template on both
+  // sides via the template-reset effect, keeping everyone in sync.
+  const applyRemoteLanguage = useCallback((lang: SupportedLanguage) => {
+    if (lang === languageRef.current) return;
+    if (!availableLangsRef.current.some((o) => o.id === lang)) return;
+    setLanguage(lang);
+    setShowLangMenu(false);
+    setShowCelebration(true);
+  }, []);
+
+  // Open / close the language dropdown locally and mirror it to the partner so
+  // they see the same options pop up when one side clicks the selector.
+  const toggleLangMenu = () => {
+    const next = !showLangMenu;
+    setShowLangMenu(next);
+    if (syncEnabledRef.current) {
+      sendCollab({ t: 'lang-menu', open: next, name: identityRef.current.name });
+    }
+  };
 
   // Subscribe to inbound collab messages for the lifetime of the panel.
   useEffect(() => {
@@ -1025,11 +1129,27 @@ function CodeEditorPanel({
       const type = msg?.t;
       if (type === 'hello') {
         setPartner({ name: (msg.name as string) ?? 'Partner', color: (msg.color as string) ?? '#f59e0b' });
-        // Adopt partner code only if we haven't started editing locally.
-        if (syncEnabledRef.current && !dirtyRef.current && typeof msg.code === 'string') {
+        // Converge on the partner's language first (resets to its template);
+        // otherwise adopt their code if we haven't started editing locally.
+        if (syncEnabledRef.current && typeof msg.lang === 'string' && msg.lang !== languageRef.current) {
+          applyRemoteLanguage(msg.lang as SupportedLanguage);
+        } else if (syncEnabledRef.current && !dirtyRef.current && typeof msg.code === 'string') {
           applyRemoteCode(msg.code as string);
         }
         if (!msg.reply) sendHello(true);
+        return;
+      }
+      if (type === 'lang') {
+        if (!syncEnabledRef.current) return;
+        if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
+        if (typeof msg.lang === 'string') applyRemoteLanguage(msg.lang as SupportedLanguage);
+        return;
+      }
+      if (type === 'lang-menu') {
+        // Mirror the partner opening / closing the language selector.
+        if (!syncEnabledRef.current) return;
+        if (msg.name) setPartner((p) => p ?? { name: msg.name as string, color: (msg.color as string) ?? '#f59e0b' });
+        setShowLangMenu(Boolean(msg.open));
         return;
       }
       if (type === 'code') {
@@ -1037,6 +1157,18 @@ function CodeEditorPanel({
         if (typeof msg.code === 'string') applyRemoteCode(msg.code as string);
         flashIncoming();
         markPartnerTyping();
+        keepCursorAlive();
+        return;
+      }
+      if (type === 'action') {
+        // Mirror the partner's Run / Submit button press on this side too.
+        if (!syncEnabledRef.current) return;
+        if (msg.action === 'run') {
+          setShowTerminal(true);
+          onRunRef.current({ code: editableCodeRef.current, language: languageRef.current });
+        } else if (msg.action === 'submit') {
+          onSubmitRef.current();
+        }
         return;
       }
       if (type === 'cursor') {
@@ -1044,9 +1176,28 @@ function CodeEditorPanel({
         applyRemoteCursor(msg);
         return;
       }
+      if (type === 'scroll') {
+        // Mirror the partner's editor scroll position onto this side.
+        if (!syncEnabledRef.current) return;
+        applyRemoteScroll(
+          typeof msg.top === 'number' ? msg.top : 0,
+          typeof msg.left === 'number' ? msg.left : 0,
+        );
+        return;
+      }
     });
     return off;
-  }, [onCollab, applyRemoteCode, applyRemoteCursor, sendHello, flashIncoming, markPartnerTyping]);
+  }, [
+    onCollab, 
+    applyRemoteCode, 
+    applyRemoteCursor, 
+    applyRemoteLanguage, 
+    sendHello, 
+    flashIncoming, 
+    markPartnerTyping, 
+    keepCursorAlive,
+    applyRemoteScroll
+  ]);
 
   // Greet (and reset) whenever the data channel opens / closes.
   useEffect(() => {
@@ -1094,17 +1245,62 @@ function CodeEditorPanel({
     }
   }, [sendCursor]);
 
+  // Publish the editor's scroll position so the partner's viewport follows.
+  const sendScroll = useCallback(() => {
+    if (!syncEnabledRef.current) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    sendCollab({
+      t: 'scroll',
+      top: editor.getScrollTop?.() ?? 0,
+      left: editor.getScrollLeft?.() ?? 0,
+    });
+  }, [sendCollab]);
+
+  // Throttled scroll publisher (with a trailing send so the final resting
+  // position is always delivered).
+  const scheduleScroll = useCallback(() => {
+    if (applyingRemoteScrollRef.current) return;  // remote-applied scroll — never echo
+    const now = Date.now();
+    if (scrollTrailingRef.current) clearTimeout(scrollTrailingRef.current);
+    if (now - scrollThrottleRef.current >= 60) {
+      scrollThrottleRef.current = now;
+      sendScroll();
+    } else {
+      scrollTrailingRef.current = setTimeout(() => {
+        scrollThrottleRef.current = Date.now();
+        sendScroll();
+      }, 60);
+    }
+  }, [sendScroll]);
+
   const handleEditorMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
     cursorMgrRef.current = new RemoteCursorManager(editor, monaco);
+    // Seed the model with the latest template if it changed before mount.
+    const model = editor.getModel?.();
+    if (model && editableCodeRef.current && model.getValue() !== editableCodeRef.current) {
+      applyingRemoteRef.current = true;
+      try {
+        editor.executeEdits('template-seed', [{
+          range: model.getFullModelRange(),
+          text: editableCodeRef.current,
+          forceMoveMarkers: true,
+        }]);
+        editor.setPosition?.({ lineNumber: 1, column: 1 });
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    }
     editor.onDidChangeCursorPosition?.(scheduleCursor);
     editor.onDidChangeCursorSelection?.(scheduleCursor);
-  }, [scheduleCursor]);
+    editor.onDidScrollChange?.(scheduleScroll);
+  }, [scheduleCursor, scheduleScroll]);
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     const code = value ?? '';
-    setEditableCode(code);
+    editableCodeRef.current = code;
     if (applyingRemoteRef.current) return;  // remote-applied edit — never echo
     dirtyRef.current = true;
     if (syncEnabledRef.current) {
@@ -1133,12 +1329,43 @@ function CodeEditorPanel({
     if (line && editor) editor.revealLineInCenter?.(line);
   }, []);
 
+  // Run: open the console automatically and (while syncing) mirror the press.
+  const handleRunClick = useCallback(() => {
+    setShowTerminal(true);
+    onRun({ code: editableCodeRef.current, language });
+    if (syncEnabledRef.current) sendCollab({ t: 'action', action: 'run' });
+  }, [onRun, language, sendCollab]);
+
+  const handleSubmitClick = useCallback(() => {
+    onSubmit();
+    if (syncEnabledRef.current) sendCollab({ t: 'action', action: 'submit' });
+  }, [onSubmit, sendCollab]);
+
+  // Drag the top edge of the console to resize its height.
+  const handleTerminalResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = terminalHeight;
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.min(Math.max(startH + (startY - ev.clientY), 90), 460);
+      setTerminalHeight(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [terminalHeight]);
+
   // Cleanup on unmount.
   useEffect(() => () => {
     cursorMgrRef.current?.dispose();
     if (cursorTrailingRef.current) clearTimeout(cursorTrailingRef.current);
+    if (scrollTrailingRef.current) clearTimeout(scrollTrailingRef.current);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
   }, []);
 
   return (
@@ -1188,7 +1415,7 @@ function CodeEditorPanel({
         {/* Language selector */}
         <div className="relative">
           <motion.button
-            onClick={() => setShowLangMenu(!showLangMenu)}
+            onClick={toggleLangMenu}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
@@ -1331,7 +1558,7 @@ function CodeEditorPanel({
         <Editor
           height="100%"
           language={getMonacoLanguage(language)}
-          value={editableCode}
+          defaultValue={editableCodeRef.current}
           onChange={handleEditorChange}
           onMount={handleEditorMount}
           theme="vs-dark"
@@ -1345,6 +1572,13 @@ function CodeEditorPanel({
             padding: { top: 12, bottom: 12 },
             renderLineHighlight: 'gutter',
             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              verticalScrollbarSize: 12,
+              horizontalScrollbarSize: 12,
+              useShadows: false,
+            },
           }}
         />
       </div>
@@ -1355,7 +1589,7 @@ function CodeEditorPanel({
         style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#161b22' }}
       >
         <motion.button
-          onClick={onToggleTerminal}
+          onClick={() => setShowTerminal((v) => !v)}
           whileHover={{ scale: 1.04 }}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
           style={{
@@ -1371,7 +1605,7 @@ function CodeEditorPanel({
         <div className="flex-1" />
 
         <motion.button
-          onClick={() => onRun({ code: editableCode, language })}
+          onClick={handleRunClick}
           disabled={codeRunState === 'running'}
           whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(74,222,128,0.4)' }}
           whileTap={{ scale: 0.97 }}
@@ -1393,7 +1627,7 @@ function CodeEditorPanel({
         </motion.button>
 
         <motion.button
-          onClick={onSubmit}
+          onClick={handleSubmitClick}
           whileHover={{ scale: 1.04, boxShadow: '0 0 18px rgba(251,191,36,0.4)' }}
           whileTap={{ scale: 0.97 }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
@@ -1412,14 +1646,40 @@ function CodeEditorPanel({
       <AnimatePresence>
         {showTerminal && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t"
-            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0a0f1a', maxHeight: 130 }}
+            className="overflow-hidden border-t flex flex-col"
+            style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0a0f1a', height: terminalHeight }}
           >
-            <div className="p-3 font-mono text-xs space-y-0.5 overflow-auto max-h-28">
+            {/* Drag handle — resize the console height */}
+            <div
+              onMouseDown={handleTerminalResizeStart}
+              className="h-2 w-full cursor-row-resize flex items-center justify-center group flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+              title="Drag to resize"
+            >
+              <div className="w-10 h-0.5 rounded-full transition-colors group-hover:bg-white/40" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            </div>
+            {/* Console header */}
+            <div
+              className="flex items-center justify-between px-3 py-1.5 border-b flex-shrink-0"
+              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            >
+              <div className="flex items-center gap-1.5">
+                <Terminal size={11} style={{ color: '#4ade80' }} />
+                <span className="text-[11px] font-semibold text-white/50">Console</span>
+              </div>
+              <button
+                onClick={() => setShowTerminal(false)}
+                className="text-white/30 hover:text-white/70"
+                title="Close console"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <div className="flex-1 p-3 font-mono text-xs space-y-0.5 overflow-auto">
               <AnimatePresence>
                 {terminalLines.map((line, i) => (
                   <motion.div
@@ -1484,8 +1744,29 @@ function CodeEditorPanel({
 // ─── Chat Drawer ──────────────────────────────────────────────────────────────
 
 function ChatDrawer({
-  isOpen, onClose, messages, input, onInput, onSend, isMuted, isCameraOff, isRecording, onMute, onCamera, onRecording, onDisconnect, onSkip,
-  codeRunState, terminalLines, onRun, onSubmit, currentStep, localStream, remoteStream, connectionState,
+  isOpen, 
+  onClose, 
+  messages, 
+  input, 
+  onInput, 
+  onSend, 
+  isMuted, 
+  isCameraOff, 
+  isRecording,
+  onMute, 
+  onCamera, 
+  onRecording, 
+  onDisconnect, 
+  onSkip,
+  codeRunState,
+  terminalLines, 
+  onRun, onSubmit, 
+  currentStep, 
+  localStream, 
+  remoteStream,
+  connectionState,
+  collabReady,
+  sendCollab
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -1509,6 +1790,8 @@ function ChatDrawer({
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   connectionState: 'idle' | 'searching' | 'connected';
+  collabReady: boolean;
+  sendCollab: (msg: CollabMessage) => void;
 }) {
   const [showFiles, setShowFiles] = useState(false);
   const [keyboardShareEnabled, setKeyboardShareEnabled] = useState(false);
@@ -1566,6 +1849,11 @@ function ChatDrawer({
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  const handleClose = useCallback(() => {
+    if (collabReady) sendCollab({ t: 'action', action: 'chat-drawer-close' });
+    onClose();
+  }, [collabReady, sendCollab, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1575,7 +1863,7 @@ function ChatDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="fixed inset-0 z-40"
             style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
           />
@@ -1586,7 +1874,7 @@ function ChatDrawer({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-4 z-50 flex gap-3 rounded-2xl overflow-hidden"
+            className="fixed inset-2 sm:inset-4 z-50 flex flex-col lg:flex-row gap-3 rounded-2xl overflow-y-auto lg:overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
               border: '1px solid rgba(255,255,255,0.1)',
@@ -1595,7 +1883,7 @@ function ChatDrawer({
           >
             {/* Left Sidebar: Video Feeds */}
             <div
-              className="w-64 flex-shrink-0 flex flex-col gap-3 p-4 border-r"
+              className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-3 p-4 border-b lg:border-b-0 lg:border-r"
               style={{
                 background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -1605,7 +1893,7 @@ function ChatDrawer({
               <div className="flex flex-col gap-2">
                 {/* Close Button */}
                 <motion.button
-                  onClick={onClose}
+                  onClick={handleClose}
                   whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   className="self-start flex items-center justify-center rounded-full"
@@ -1629,7 +1917,7 @@ function ChatDrawer({
                 >
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative w-full max-w-[180px] lg:max-w-none mx-auto"
                     style={{
                       background: isCameraOff
                         ? 'linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6))'
@@ -1757,7 +2045,7 @@ function ChatDrawer({
                 >
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative"
+                    className="rounded-xl overflow-hidden flex items-center justify-center aspect-square relative w-full max-w-[180px] lg:max-w-none mx-auto"
                     style={{
                       background: 'linear-gradient(135deg, rgba(34,211,238,0.4), rgba(6,182,212,0.2))',
                       border: '2px solid rgba(34,211,238,0.5)',
@@ -1838,7 +2126,7 @@ function ChatDrawer({
             </div>
 
             {/* Center: Code Editor (Top) + Output (Bottom) */}
-            <div className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
+            <div className="flex-1 flex flex-col gap-3 p-4 overflow-hidden w-full min-h-[55vh] lg:min-h-0">
               {/* Code Editor Section */}
               <motion.div
                 className="flex-1 flex flex-col rounded-xl overflow-hidden"
@@ -1996,11 +2284,10 @@ function ChatDrawer({
 
             {/* Right Sidebar: Chat */}
             <motion.div
-              className="w-80 flex-shrink-0 flex flex-col border-l overflow-hidden"
+              className="w-full lg:w-80 flex-shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l overflow-hidden h-[60vh] lg:h-full"
               style={{
                 borderColor: 'rgba(88,166,255,0.15)',
                 background: 'linear-gradient(180deg, #0d1117 0%, #161b22 100%)',
-                height: '100%',
               }}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -2673,7 +2960,6 @@ function CollaborationArena({
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showTerminal, setShowTerminal] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
 
   useEffect(() => {
@@ -2681,22 +2967,31 @@ function CollaborationArena({
     return () => clearInterval(t);
   }, []);
 
+  // Mirror the partner opening the chat while collaborating.
+  useEffect(() => {
+    const off = onCollab((msg) => {
+      if (msg?.t === 'action' && msg.action === 'chat-open') setChatOpen(true);
+      if(msg?.t === 'action' && msg.action === 'chat-drawer-close') {
+        setChatOpen(false)
+      };
+    });
+    return off;
+  }, [onCollab]);
+
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 h-full overflow-hidden">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col lg:flex-row gap-3 h-full overflow-y-auto lg:overflow-hidden">
       {/* Left: Problem statement */}
-      <div className="w-80 flex-shrink-0 overflow-y-auto">
+      <div className="w-full lg:w-80 flex-shrink-0 lg:overflow-y-auto">
         <ProblemStatement />
       </div>
 
       {/* Center: Code Editor */}
-      <div className="flex-1 overflow-hidden min-w-0">
+      <div className="flex-1 overflow-hidden min-w-0 h-[70vh] min-h-[420px] lg:h-auto lg:min-h-0">
         <CodeEditorPanel
           codeRunState={codeRunState}
           terminalLines={terminalLines}
           onRun={onRunCode}
           onSubmit={onSubmit}
-          showTerminal={showTerminal}
-          onToggleTerminal={() => setShowTerminal(!showTerminal)}
           elapsed={elapsed}
           isRecording={isRecording}
           connectionState={connectionState}
@@ -2707,7 +3002,7 @@ function CollaborationArena({
       </div>
 
       {/* Right: Steps + Video + Chat */}
-      <div className="flex flex-col gap-3 flex-shrink-0 w-64 overflow-y-auto">
+      <div className="flex flex-col gap-3 flex-shrink-0 w-full lg:w-64 lg:overflow-y-auto">
         <StepsBar />
 
         <VideoCallBar
@@ -2729,7 +3024,7 @@ function CollaborationArena({
 
         <div className="flex gap-2 w-full relative">
           <motion.button
-            onClick={() => setChatOpen(true)}
+            onClick={() => { setChatOpen(true); if (collabReady) sendCollab({ t: 'action', action: 'chat-open' }); }}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
@@ -2863,6 +3158,8 @@ function CollaborationArena({
         localStream={localStream}
         remoteStream={remoteStream}
         connectionState={connectionState}
+        collabReady={collabReady}
+        sendCollab={sendCollab}
       />
     </motion.div>
   );
@@ -3066,10 +3363,9 @@ function CodingPracticeContent() {
 
   return (
     <div
-      className="flex flex-row"
+      className="flex flex-row h-[calc(100dvh-7.5rem)] md:h-[calc(100vh-3.5rem)]"
       style={{
         background: 'linear-gradient(135deg, #050510 0%, #0a0d1a 50%, #050e0a 100%)',
-        height: 'calc(100vh - 3.5rem)',
         padding: '0.75rem',
       }}
     >
@@ -3082,7 +3378,6 @@ function CodingPracticeContent() {
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           className="h-full overflow-hidden"
-          style={{ height: 'calc(100vh - 3.5rem - 1.5rem)' }}
         >
           <CollaborationArena
             isAnonymous={isAnonymous}

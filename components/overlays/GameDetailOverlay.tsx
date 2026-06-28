@@ -456,7 +456,7 @@ export default function GameDetailOverlay({
 
           {/* Card panel with pulsing royal glow */}
           <motion.div
-            className="pointer-events-auto w-full rounded-3xl overflow-hidden"
+            className="pointer-events-auto w-full rounded-3xl overflow-x-hidden overflow-y-auto max-h-[92vh] md:overflow-hidden md:max-h-none"
             style={{
               background: 'linear-gradient(160deg, #0e1f2e 0%, #081420 100%)',
               border: `1px solid ${accent}44`,
@@ -481,7 +481,7 @@ export default function GameDetailOverlay({
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex relative">
+            <div className="flex flex-col md:flex-row relative">
 
               {/* ── SUCCESS overlay — shown when all steps are green ──────── */}
               <AnimatePresence>
@@ -551,7 +551,7 @@ export default function GameDetailOverlay({
                     >
                       <motion.div style={{ filter: 'drop-shadow(0 2px 16px rgba(255,215,0,0.7))' }}>
                         <span
-                          className="block text-5xl font-black tracking-[0.3em] uppercase select-none"
+                          className="block text-3xl md:text-5xl font-black tracking-[0.3em] uppercase select-none"
                           style={{
                             background: 'linear-gradient(90deg, #7B5C00 0%, #FFD700 22%, #FFFDE7 50%, #FFD700 78%, #7B5C00 100%)',
                             WebkitBackgroundClip: 'text',
@@ -598,7 +598,7 @@ export default function GameDetailOverlay({
               </AnimatePresence>
 
               {/* ── Left: image panel ──────────────────────────────────────── */}
-              <div className="relative w-[240px] flex-shrink-0 self-stretch">
+              <div className="relative w-full h-44 md:w-[240px] md:h-auto flex-shrink-0 self-stretch">
                 {game.image ? (
                   <Image
                     src={game.image}
@@ -617,7 +617,7 @@ export default function GameDetailOverlay({
 
                 {/* Accent glow edge with animated pulse */}
                 <motion.div
-                  className="absolute inset-y-0 right-0 w-[2px]"
+                  className="absolute inset-x-0 bottom-0 h-[2px] md:inset-x-auto md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[2px]"
                   style={{ background: `linear-gradient(180deg, transparent, ${accent}, transparent)` }}
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
@@ -656,9 +656,9 @@ export default function GameDetailOverlay({
               </div>
 
               {/* ── Right: timeline ────────────────────────────────────────── */}
-              <div className="flex-1 p-6 flex flex-col">
+              <div className="flex-1 p-4 md:p-6 flex flex-col">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-7">
+                <div className="flex items-start justify-between mb-5 md:mb-7">
                   <div>
                     <motion.h2
                       className="text-base font-black text-white uppercase tracking-wide leading-tight"

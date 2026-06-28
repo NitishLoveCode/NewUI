@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Menu, LogOut, User } from 'lucide-react';
+import { Menu, LogOut, User, CheckCircle2, Flame, Trophy } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
@@ -15,6 +15,17 @@ interface NavbarProps {
   sidebarWidth?: number;
   onOpenAuth?: (tab: 'login' | 'register') => void;
 }
+
+// DSA progress stats — replace these with real data (API/store) when available.
+const DSA_STATS = {
+  solved: 248,
+  target: 500,
+  easy: 120,
+  medium: 98,
+  hard: 30,
+  streak: 14,
+  rank: 'Gold',
+};
 
 export default function Navbar({
   onToggleSidebar,
@@ -97,6 +108,79 @@ export default function Navbar({
             <SiteLogo size="md" />
           </motion.div>
         </Link>
+
+        {/* DSA stats (desktop only) */}
+        <div className="hidden lg:flex items-center gap-2 xl:gap-3">
+            {/* Solved / Target with progress */}
+            <div
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.18)' }}
+              title={`${DSA_STATS.solved} of ${DSA_STATS.target} problems solved`}
+            >
+              <CheckCircle2 size={16} style={{ color: '#00e676' }} />
+              <div className="flex flex-col leading-tight min-w-[88px]">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-bold text-white">{DSA_STATS.solved}</span>
+                  <span className="text-[11px]" style={{ color: '#b1bad3' }}>
+                    / {DSA_STATS.target}
+                  </span>
+                </div>
+                <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.round((DSA_STATS.solved / DSA_STATS.target) * 100))}%`,
+                      background: 'linear-gradient(90deg, #00e676, #00c853)',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Difficulty breakdown */}
+            <div
+              className="hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              title="Solved by difficulty"
+            >
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#00e676' }} />
+                <span className="text-xs font-semibold text-white">{DSA_STATS.easy}</span>
+                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Easy</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ffb300' }} />
+                <span className="text-xs font-semibold text-white">{DSA_STATS.medium}</span>
+                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Med</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ff5252' }} />
+                <span className="text-xs font-semibold text-white">{DSA_STATS.hard}</span>
+                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Hard</span>
+              </div>
+            </div>
+
+            {/* Streak */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.25)' }}
+              title={`${DSA_STATS.streak}-day solving streak`}
+            >
+              <Flame size={16} style={{ color: '#ff7043' }} />
+              <span className="text-sm font-bold text-white">{DSA_STATS.streak}</span>
+              <span className="text-[10px]" style={{ color: '#b1bad3' }}>day</span>
+            </div>
+
+            {/* Rank */}
+            <div
+              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.25)' }}
+              title={`Current rank: ${DSA_STATS.rank}`}
+            >
+              <Trophy size={16} style={{ color: '#ffc107' }} />
+              <span className="text-xs font-bold text-white">{DSA_STATS.rank}</span>
+            </div>
+          </div>
 
         {/* Auth buttons or User Profile */}
         <div className="flex items-center gap-2 relative">
