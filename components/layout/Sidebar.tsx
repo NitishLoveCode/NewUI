@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Gift, Trophy, Users, Crown, Newspaper, MessageSquare,
   Handshake, Shield, Headphones, Globe, ChevronDown, Code2, Activity, BookOpen,
+  Home, Bookmark,
 } from 'lucide-react';
 import { sidebarItems } from '@/data/sidebar';
 
@@ -23,6 +24,8 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   'code-2': Code2,
   activity: Activity,
   'book-open': BookOpen,
+  home: Home,
+  bookmark: Bookmark,
 };
 
 interface SidebarProps {
@@ -31,8 +34,6 @@ interface SidebarProps {
 
 export default function Sidebar({ isExpanded }: SidebarProps) {
   const mainItems = sidebarItems.filter(i => i.section === 'main');
-  const infoItems = sidebarItems.filter(i => i.section === 'info');
-  const supportItems = sidebarItems.filter(i => i.section === 'support');
 
   return (
     <motion.aside
@@ -43,7 +44,7 @@ export default function Sidebar({ isExpanded }: SidebarProps) {
       // style={{ backgroundColor: '#12222b' }}
     >
       <div 
-        className="flex flex-col h-full overflow-y-auto py-3 bg-[#1a2d38] rounded-lg mx-2"
+        className="flex flex-col h-full w-[85%] overflow-y-auto py-3 bg-[#1a2d38] rounded-lg mx-2"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <style>{`
@@ -52,10 +53,6 @@ export default function Sidebar({ isExpanded }: SidebarProps) {
           }
         `}</style>
         <SidebarGroup items={mainItems} isExpanded={isExpanded} />
-        <div className="my-3 mx-3" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-        <SidebarGroup items={infoItems} isExpanded={isExpanded} />
-        <div className="my-3 mx-3" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-        <SidebarGroup items={supportItems} isExpanded={isExpanded} />
       </div>
     </motion.aside>
   );

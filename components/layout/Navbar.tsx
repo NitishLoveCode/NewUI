@@ -1,12 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Menu, LogOut, User, CheckCircle2, Flame, Trophy } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import SiteLogo from '@/components/SiteLogo';
+
+// Top navigation menu items
+const NAV_LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'Problems', href: '/problems' },
+  { label: 'Collaborate', href: '/pair' },
+  { label: 'Contests', href: '/challenges' },
+  { label: 'Discuss', href: '/discussion' },
+  { label: 'Leaderboard', href: '/leaderboard' },
+];
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -37,6 +48,7 @@ export default function Navbar({
   const { user, loading } = useUser();
   const [showMenu, setShowMenu] = useState(false);
   const supabase = createClient();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -109,78 +121,34 @@ export default function Navbar({
           </motion.div>
         </Link>
 
-        {/* DSA stats (desktop only) */}
-        <div className="hidden lg:flex items-center gap-2 xl:gap-3">
-            {/* Solved / Target with progress */}
-            <div
-              className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.18)' }}
-              title={`${DSA_STATS.solved} of ${DSA_STATS.target} problems solved`}
-            >
-              <CheckCircle2 size={16} style={{ color: '#00e676' }} />
-              <div className="flex flex-col leading-tight min-w-[88px]">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-bold text-white">{DSA_STATS.solved}</span>
-                  <span className="text-[11px]" style={{ color: '#b1bad3' }}>
-                    / {DSA_STATS.target}
-                  </span>
-                </div>
-                <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.round((DSA_STATS.solved / DSA_STATS.target) * 100))}%`,
-                      background: 'linear-gradient(90deg, #00e676, #00c853)',
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Difficulty breakdown */}
-            <div
-              className="hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-              title="Solved by difficulty"
-            >
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#00e676' }} />
-                <span className="text-xs font-semibold text-white">{DSA_STATS.easy}</span>
-                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Easy</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ffb300' }} />
-                <span className="text-xs font-semibold text-white">{DSA_STATS.medium}</span>
-                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Med</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ff5252' }} />
-                <span className="text-xs font-semibold text-white">{DSA_STATS.hard}</span>
-                <span className="text-[10px]" style={{ color: '#b1bad3' }}>Hard</span>
-              </div>
-            </div>
-
-            {/* Streak */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.25)' }}
-              title={`${DSA_STATS.streak}-day solving streak`}
-            >
-              <Flame size={16} style={{ color: '#ff7043' }} />
-              <span className="text-sm font-bold text-white">{DSA_STATS.streak}</span>
-              <span className="text-[10px]" style={{ color: '#b1bad3' }}>day</span>
-            </div>
-
-            {/* Rank */}
-            <div
-              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.25)' }}
-              title={`Current rank: ${DSA_STATS.rank}`}
-            >
-              <Trophy size={16} style={{ color: '#ffc107' }} />
-              <span className="text-xs font-bold text-white">{DSA_STATS.rank}</span>
-            </div>
-          </div>
+        {/* Center navigation menu */}
+        <nav className="flex items-center gap-1">
+          {NAV_LINKS.map((item) => {
+            const isActive =
+              item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="px-4 py-1.5 text-sm font-semibold transition-colors"
+                style={{
+                  color: isActive ? '#00e676' : '#b1bad3',
+                  borderBottom: isActive
+                    ? '2px solid #00e676'
+                    : '2px solid transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) e.currentTarget.style.color = '#b1bad3';
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* Auth buttons or User Profile */}
         <div className="flex items-center gap-2 relative">
