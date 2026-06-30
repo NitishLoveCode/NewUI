@@ -13,7 +13,7 @@ import SiteLogo from '@/components/SiteLogo';
 const NAV_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Problems', href: '/problems' },
-  { label: 'Collaborate', href: '/pair' },
+  { label: 'Collaborate', href: '/collaborate' },
   { label: 'Contests', href: '/challenges' },
   { label: 'Discuss', href: '/discussion' },
   { label: 'Leaderboard', href: '/leaderboard' },

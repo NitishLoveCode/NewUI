@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { motion, animate, useInView } from 'framer-motion';
 import PromoCard from './PromoCard';
 import SocialLoginButtons from './SocialLoginButtons';
-import { Users, Code2, BookOpen } from 'lucide-react';
+import { Users, Code2, BookOpen, Video, MessageSquare, Rocket, ArrowRight, Heart } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 
 interface HeroSectionProps {
@@ -49,6 +49,41 @@ const stats = [
   { icon: BookOpen, label: 'Notes Shared', value: 3_000, suffix: '+', prefix: '' },
 ];
 
+const features = [
+  { icon: Video, title: 'Video Call', desc: 'Talk face-to-face while coding', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  { icon: Code2, title: 'Live Editor', desc: 'Code together in real-time', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+  { icon: MessageSquare, title: 'Live Chat', desc: 'Discuss and solve problems', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { icon: Users, title: 'Smart Match', desc: 'Find the perfect coding partner', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+];
+
+// Headline words — `grad` words get an animated green gradient shimmer
+const titleWords: { t: string; grad?: string }[] = [
+  { t: 'Find' },
+  { t: 'your' },
+  { t: 'coding' },
+  { t: 'partner.' },
+  { t: 'Solve', grad: 'linear-gradient(120deg, #00e676, #69f0ae, #00c853, #00e676)' },
+  { t: 'together.', grad: 'linear-gradient(120deg, #00c853, #00e676, #b9f6ca, #00c853)' },
+  { t: 'Grow', grad: 'linear-gradient(120deg, #69f0ae, #00e676, #00c853, #69f0ae)' },
+  { t: 'faster.', grad: 'linear-gradient(120deg, #00e676, #b9f6ca, #69f0ae, #00e676)' },
+];
+
+const titleContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.12 } },
+};
+
+const titleWord = {
+  hidden: { opacity: 0, y: 28, rotateX: -75, filter: 'blur(6px)' },
+  show: {
+    opacity: 1,
+    y: 0,
+    rotateX: 0,
+    filter: 'blur(0px)',
+    transition: { type: 'spring' as const, stiffness: 140, damping: 14 },
+  },
+};
+
 export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
   const { user } = useUser();
   return (
@@ -57,106 +92,203 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
       <div className="hidden md:grid md:grid-cols-2 gap-8 items-start">
         {/* Left: CTA content */}
         <div className="flex flex-col gap-5 py-2 relative">
-          {/* Green ambient glow behind content */}
+          {/* Purple ambient glow behind content */}
           <div
             className="absolute -top-16 -left-16 w-72 h-72 rounded-full pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, rgba(0,230,118,0.07) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(168,85,247,0.10) 0%, transparent 70%)',
             }}
           />
 
-          {/* Bonus badge */}
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-full"
+            className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-full"
             style={{
-              background: 'linear-gradient(135deg, rgba(0,230,118,0.15), rgba(0,200,83,0.08))',
-              border: '1px solid rgba(0,230,118,0.25)',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(168,85,247,0.3)',
             }}
           >
-            <span className="text-sm">🎁</span>
-            <span className="text-xs font-semibold" style={{ color: '#00e676' }}>
-              Daily DSA Sheets, Notes, and Practice Sets
-            </span>
+            <Rocket size={14} style={{ color: '#a855f7' }} />
+            <span className="text-xs font-semibold text-white">Connect • Collaborate • Code</span>
           </motion.div>
 
           {/* Headline */}
           <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="text-3xl xl:text-4xl font-black leading-tight"
-            style={{ color: '#fff' }}
+            variants={titleContainer}
+            initial="hidden"
+            animate="show"
+            className="flex flex-wrap gap-x-3 gap-y-1 text-4xl xl:text-5xl font-black leading-[1.1] tracking-tight"
+            style={{ color: '#fff', perspective: 800 }}
           >
-            The World&apos;s Most
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #00e676 0%, #69f0ae 60%, #b9f6ca 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              {' '}Trusted DSA
-            </span>
-            {' '}Platform
+            {titleWords.map((w, i) => (
+              <motion.span
+                key={i}
+                variants={titleWord}
+                whileHover={{ scale: 1.06 }}
+                className="inline-block origin-bottom"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                {w.grad ? (
+                  <motion.span
+                    className="inline-block"
+                    style={{
+                      background: w.grad,
+                      backgroundSize: '300% 100%',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 14px rgba(0,230,118,0.35))',
+                    }}
+                    animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                  >
+                    {w.t}
+                  </motion.span>
+                ) : (
+                  w.t
+                )}
+              </motion.span>
+            ))}
           </motion.h1>
 
-          {/* Register CTA */}
-          <motion.button
+          {/* Description */}
+          <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            whileHover={{ scale: 1.03, boxShadow: '0 0 32px rgba(0,230,118,0.55)' }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onOpenAuth?.('register')}
-            className="self-start px-8 py-3.5 rounded-xl text-base font-bold text-black"
-            style={{ background: 'linear-gradient(135deg, #00e676, #00c853)' }}
+            transition={{ delay: 0.18 }}
+            className="text-sm md:text-base max-w-lg leading-relaxed"
+            style={{ color: '#b1bad3' }}
           >
-            Start Learning — It&apos;s Free
-          </motion.button>
+            iLovedsa.com is a social DSA platform where developers match, collaborate in real-time, and
+            achieve more together.
+          </motion.p>
 
-          {/* Social login */}
-          {!user && (
+          {/* Features */}
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
+            transition={{ delay: 0.22 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-1"
           >
-            <p className="text-sm mb-3" style={{ color: '#b1bad3' }}>
-              Or Sign Up With
-            </p>
-            <SocialLoginButtons />
-          </motion.div>
-          )}
-
-          {/* Stats row */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32 }}
-            className="grid grid-cols-3 gap-3 mt-1"
-          >
-            {stats.map(({ icon: Icon, label, value, suffix, prefix }) => (
-              <div
-                key={label}
-                className="flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-center"
-                style={{
-                  backgroundColor: 'rgba(33,55,67,0.6)',
-                  border: '1px solid rgba(0,230,118,0.1)',
-                }}
-              >
-                <Icon size={14} style={{ color: '#00e676' }} />
-                <p className="text-base font-black text-white leading-tight">
-                  <AnimatedCounter to={value} suffix={suffix} prefix={prefix ?? ''} />
-                </p>
-                <p className="text-[10px] leading-tight" style={{ color: '#b1bad3' }}>
-                  {label}
+            {features.map(({ icon: Icon, title, desc, color, bg }) => (
+              <div key={title} className="flex flex-col gap-2">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: bg, border: `1px solid ${color}33` }}
+                >
+                  <Icon size={20} style={{ color }} />
+                </div>
+                <p className="text-sm font-bold text-white">{title}</p>
+                <p className="text-[11px] leading-snug" style={{ color: '#8a93a8' }}>
+                  {desc}
                 </p>
               </div>
             ))}
+          </motion.div>
+
+          {/* Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.26 }}
+            className="flex flex-wrap items-center gap-4 mt-2"
+          >
+            <motion.button
+              whileHover={{ scale: 1.03, boxShadow: '0 8px 28px rgba(0,230,118,0.35)' }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => onOpenAuth?.('register')}
+              className="flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold text-black"
+              style={{ background: 'linear-gradient(135deg, #ffffff, #c8f7dd 55%, #69f0ae)' }}
+            >
+              Start Coding Now <ArrowRight size={17} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-7 py-3.5 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              Explore Problems
+            </motion.button>
+          </motion.div>
+
+          {/* Social proof */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center gap-3 mt-2"
+          >
+            <div className="flex items-center">
+              {[14, 22, 33, 44].map((img, i) => (
+                <img
+                  key={img}
+                  src={`https://i.pravatar.cc/48?img=${img}`}
+                  alt=""
+                  className="w-8 h-8 rounded-full border-2 object-cover"
+                  style={{ marginLeft: i === 0 ? 0 : -10, borderColor: '#0f212e' }}
+                />
+              ))}
+              <span
+                className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
+                style={{ background: '#ec4899' }}
+              >
+                +20K
+              </span>
+            </div>
+            <span className="text-sm font-medium" style={{ color: '#e6eaf2' }}>
+              Loved by <span className="font-bold text-white">80K+</span> developers worldwide
+            </span>
+
+            {/* Curvy arrow + heart */}
+            <div className="relative flex items-center">
+              <motion.svg
+                width="82"
+                height="34"
+                viewBox="0 0 82 34"
+                fill="none"
+                className="shrink-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <motion.path
+                  d="M2 14 C 16 30, 44 32, 66 16"
+                  stroke="#f0438c"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ delay: 0.5, duration: 0.8, ease: 'easeInOut' }}
+                />
+                <motion.path
+                  d="M66 16 L 56 18 M66 16 L 61 26"
+                  stroke="#f0438c"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ delay: 1.25, duration: 0.3 }}
+                />
+              </motion.svg>
+              <motion.div
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 1.4, type: 'spring', stiffness: 260, damping: 12 }}
+                className="-ml-1"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.18, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Heart size={24} className="fill-[#f0438c] text-[#f0438c]" />
+                </motion.div>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
 
