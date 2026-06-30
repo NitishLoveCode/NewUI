@@ -93,9 +93,9 @@ function Chip({ label, active, onClick }: { label: string; active?: boolean; onC
       onClick={onClick}
       className="px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors"
       style={{
-        background: active ? 'rgba(0,230,118,0.14)' : 'rgba(255,255,255,0.04)',
-        color: active ? '#00e676' : '#b1bad3',
-        border: `1px solid ${active ? 'rgba(0,230,118,0.4)' : BORDER}`,
+        background: active ? '#00e676' : 'rgba(255,255,255,0.04)',
+        color: active ? '#0f212e' : '#b1bad3',
+        border: `1px solid ${active ? '#00e676' : BORDER}`,
       }}
     >
       {label}
@@ -149,7 +149,7 @@ export default function ProblemsPage() {
   return (
     <PageShell>
       <div className="px-4 py-5 lg:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[270px_minmax(0,1fr)] xl:grid-cols-[270px_minmax(0,1.1fr)_minmax(0,1.25fr)] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[248px_minmax(0,1fr)_minmax(0,1.12fr)] gap-4">
 
           {/* ─── Filters Sidebar ─── */}
           <aside
@@ -188,12 +188,12 @@ export default function ProblemsPage() {
                     onClick={() => setDifficulty(d)}
                     className="px-3 py-1.5 rounded-md text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                     style={{
-                      background: active ? 'rgba(0,230,118,0.14)' : 'rgba(255,255,255,0.04)',
-                      color: active ? '#00e676' : '#b1bad3',
-                      border: `1px solid ${active ? 'rgba(0,230,118,0.4)' : BORDER}`,
+                      background: active ? '#00e676' : 'rgba(255,255,255,0.04)',
+                      color: active ? '#0f212e' : '#b1bad3',
+                      border: `1px solid ${active ? '#00e676' : BORDER}`,
                     }}
                   >
-                    {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />}
+                    {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? '#0f212e' : dot }} />}
                     {d}
                   </button>
                 );
@@ -344,7 +344,7 @@ export default function ProblemsPage() {
 
             {/* Column header */}
             <div
-              className="grid grid-cols-[40px_1fr_90px_100px_40px] gap-2 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
+              className="grid grid-cols-[34px_minmax(0,1fr)_82px_90px_34px] gap-2 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
               style={{ color: MUTED, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}
             >
               <span>#</span>
@@ -355,31 +355,31 @@ export default function ProblemsPage() {
             </div>
 
             {/* Rows */}
-            <div className="flex-1">
+            <div className="flex-1 px-2 py-1">
               {filtered.map((p) => {
                 const active = p.id === selectedId;
                 return (
                   <button
                     key={p.id}
                     onClick={() => setSelectedId(p.id)}
-                    className="w-full grid grid-cols-[40px_1fr_90px_100px_40px] gap-2 px-5 py-3.5 items-center text-left transition-colors"
+                    className="w-full grid grid-cols-[34px_minmax(0,1fr)_82px_90px_34px] gap-2 px-3 py-3.5 items-center text-left transition-colors my-0.5"
                     style={{
-                      background: active ? 'rgba(0,230,118,0.07)' : 'transparent',
-                      borderBottom: `1px solid ${BORDER}`,
-                      borderLeft: `2px solid ${active ? '#00e676' : 'transparent'}`,
+                      background: active ? 'rgba(0,230,118,0.08)' : 'transparent',
+                      border: `1px solid ${active ? 'rgba(0,230,118,0.5)' : 'transparent'}`,
+                      borderRadius: 10,
                     }}
                   >
-                    <span className="text-[13px]" style={{ color: MUTED }}>{p.id}</span>
+                    <span className="text-[13px] self-start pt-0.5" style={{ color: MUTED }}>{p.id}</span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13.5px] font-medium text-white truncate">{p.title}</span>
-                        {p.bookmarked && <Bookmark size={13} style={{ color: MUTED }} />}
+                        <span className="text-[13.5px] font-medium text-white leading-snug">{p.title}</span>
+                        {p.bookmarked && <Bookmark size={13} className="shrink-0" style={{ color: MUTED }} />}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {p.topics.map((t) => (
                           <span
                             key={t}
-                            className="px-2 py-0.5 rounded text-[10.5px]"
+                            className="px-2 py-0.5 rounded text-[10.5px] whitespace-nowrap"
                             style={{ background: 'rgba(255,255,255,0.05)', color: MUTED }}
                           >
                             {t}
@@ -387,15 +387,17 @@ export default function ProblemsPage() {
                         ))}
                       </div>
                     </div>
-                    <span className="text-[12.5px] font-semibold" style={{ color: DIFF_COLOR[p.difficulty] }}>
+                    <span className="text-[12.5px] font-semibold self-start pt-0.5" style={{ color: DIFF_COLOR[p.difficulty] }}>
                       {p.difficulty}
                     </span>
-                    <span className="text-[12.5px]" style={{ color: '#b1bad3' }}>{p.acceptance}</span>
-                    {p.status === 'solved' ? (
-                      <CheckCircle2 size={18} color="#00e676" />
-                    ) : (
-                      <Circle size={18} style={{ color: 'rgba(255,255,255,0.18)' }} />
-                    )}
+                    <span className="text-[12.5px] self-start pt-0.5" style={{ color: '#b1bad3' }}>{p.acceptance}</span>
+                    <span className="self-start pt-0.5">
+                      {p.status === 'solved' ? (
+                        <CheckCircle2 size={18} color="#00e676" />
+                      ) : (
+                        <Circle size={18} style={{ color: 'rgba(255,255,255,0.18)' }} />
+                      )}
+                    </span>
                   </button>
                 );
               })}
@@ -444,12 +446,22 @@ export default function ProblemsPage() {
           >
             {/* Banner */}
             <div
-              className="relative px-5 pt-4 pb-3"
-              style={{ background: 'linear-gradient(135deg, rgba(0,230,118,0.10), rgba(0,230,118,0.02))' }}
+              className="relative px-5 pt-4 pb-3 overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,230,118,0.02) 55%)' }}
             >
+              {/* Decorative code illustration */}
+              <div className="absolute top-3 right-4 opacity-90 pointer-events-none hidden sm:block">
+                <div
+                  className="relative w-28 h-20 rounded-lg flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, rgba(0,230,118,0.18), rgba(0,230,118,0.04))', border: '1px solid rgba(0,230,118,0.3)' }}
+                >
+                  <span className="text-[26px] font-bold" style={{ color: '#00e676' }}>{'</>'}</span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full" style={{ background: 'rgba(0,230,118,0.25)' }} />
+                </div>
+              </div>
               <span
-                className="inline-block px-2.5 py-1 rounded-md text-[11px] font-semibold mb-3"
-                style={{ background: 'rgba(0,230,118,0.16)', color: '#00e676' }}
+                className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold mb-3"
+                style={{ background: 'rgba(0,230,118,0.14)', color: '#00e676', border: '1px solid rgba(0,230,118,0.4)' }}
               >
                 {selected.difficulty}
               </span>
