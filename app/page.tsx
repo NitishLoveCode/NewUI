@@ -58,6 +58,7 @@ export default function HomePage() {
           <TrendingGames />
           <TrendingSports />
           <div className="h-8" />
+          <a href="http://localhost:3000/quicksolve">dddd</a>
         </div>
       </motion.main>
 
