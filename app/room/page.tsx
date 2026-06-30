@@ -238,6 +238,8 @@ export default function QuickSolvePage() {
   const {
     localVideoRef,
     remoteVideoRef,
+    localStream,
+    remoteStream,
     isConnected,
     status,
     isMuted,
@@ -427,6 +429,7 @@ export default function QuickSolvePage() {
             icon={<Mic size={12} className="text-emerald-400" />}
             mirrored
             videoRef={remoteVideoRef}
+            stream={remoteStream}
             placeholder={
               status === 'matched'
                 ? 'Connecting…'
@@ -444,6 +447,7 @@ export default function QuickSolvePage() {
             grow
             icon={<Heart size={12} className="fill-rose-400 text-rose-400" />}
             videoRef={localVideoRef}
+            stream={localStream}
             muted
             mirrored
             placeholder={!hasVideo ? 'Camera off' : 'Starting…'}
@@ -895,13 +899,27 @@ interface VideoTileProps {
   label: string;
   icon?: React.ReactNode;
   videoRef: RefObject<HTMLVideoElement | null>;
+  stream?: MediaStream | null;
   muted?: boolean;
   mirrored?: boolean;
   placeholder?: string;
   grow?: boolean;
 }
 
-function VideoTile({ label, icon, videoRef, muted, mirrored, placeholder, grow }: VideoTileProps) {
+function VideoTile({ label, icon, videoRef, stream, muted, mirrored, placeholder, grow }: VideoTileProps) {
+  // Attach the stream directly to this element. Relying solely on the hook's
+  // ref assignment can miss if the element mounts after `ontrack` fires, so we
+  // (re)bind here whenever the stream changes.
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream ?? null;
+    }
+  }, [videoRef, stream]);
+
+  const showPlaceholder = !stream && Boolean(placeholder);
+
   return (
     <div
       className={`relative w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 ${
@@ -915,7 +933,7 @@ function VideoTile({ label, icon, videoRef, muted, mirrored, placeholder, grow }
         muted={muted}
         className={`h-full w-full object-cover ${mirrored ? '-scale-x-100' : ''}`}
       />
-      {placeholder && (
+      {showPlaceholder && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a2438] to-[#0d1424] px-3 text-center text-[11px] text-zinc-400">
           {placeholder}
         </div>
