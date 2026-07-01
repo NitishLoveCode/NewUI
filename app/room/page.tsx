@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import dynamic from 'next/dynamic';
+import type { OnMount } from '@monaco-editor/react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import useWebRTC from '@/hooks/testSocketHook/useWebRTC';
@@ -41,6 +42,14 @@ import {
 } from 'lucide-react';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
+
+// Monaco types inferred from the OnMount callback so we avoid a direct
+// `monaco-editor` import (it's only a transitive dependency).
+type EditorInstance = Parameters<OnMount>[0];
+type MonacoInstance = Parameters<OnMount>[1];
+
+// Name shown on the partner's remote cursor flag (matches the video tile).
+const PARTNER_NAME = 'Arjun';
 
 // Languages supported by the nodeServer / Piston backend. The `id` doubles as
 // the Piston language name, so no extra mapping is needed at call time.
@@ -282,6 +291,20 @@ export default function QuickSolvePage() {
   // Guards against echoing a remote update straight back to the partner.
   const applyingRemoteRef = useRef(false);
 
+  // ---- Live collaboration: editor handle + remote cursor/scroll ----
+  const editorRef = useRef<EditorInstance | null>(null);
+  const monacoRef = useRef<MonacoInstance | null>(null);
+  // Ids of the decorations that draw the partner's text selection.
+  const remoteDecorationsRef = useRef<string[]>([]);
+  // Monaco content widget that draws the partner's caret + name flag.
+  const remoteWidgetRef = useRef<import('monaco-editor').editor.IContentWidget | null>(null);
+  const remoteWidgetPosRef = useRef<{ lineNumber: number; column: number } | null>(null);
+  // Suppress scroll echo while we're applying the partner's scroll position.
+  const applyingRemoteScrollRef = useRef(false);
+  const scrollRafRef = useRef<number | null>(null);
+  // Hides the partner cursor after a period of inactivity.
+  const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const langOption = LANGUAGES.find((l) => l.id === language) ?? LANGUAGES[0];
 
   const inSession = status === 'matched' || status === 'queued' || status === 'partner_left';
@@ -322,6 +345,135 @@ export default function QuickSolvePage() {
     return () => clearTimeout(timer);
   }, [showCelebration]);
 
+  // Remove the partner's caret widget + selection decorations.
+  const clearRemoteCursor = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    remoteDecorationsRef.current = editor.deltaDecorations(remoteDecorationsRef.current, []);
+    if (remoteWidgetRef.current) {
+      editor.removeContentWidget(remoteWidgetRef.current);
+      remoteWidgetRef.current = null;
+    }
+  }, []);
+
+  // Draw / move the partner's caret (name flag) and selection highlight.
+  const renderRemoteCursor = useCallback(
+    (
+      position: { lineNumber: number; column: number } | null | undefined,
+      selection:
+        | {
+            startLineNumber: number;
+            startColumn: number;
+            endLineNumber: number;
+            endColumn: number;
+          }
+        | null
+        | undefined
+    ) => {
+      const editor = editorRef.current;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco || !position) return;
+
+      // Selection highlight (only when there's an actual range selected).
+      const decorations: import('monaco-editor').editor.IModelDeltaDecoration[] = [];
+      if (
+        selection &&
+        (selection.startLineNumber !== selection.endLineNumber ||
+          selection.startColumn !== selection.endColumn)
+      ) {
+        decorations.push({
+          range: new monaco.Range(
+            selection.startLineNumber,
+            selection.startColumn,
+            selection.endLineNumber,
+            selection.endColumn
+          ),
+          options: { className: 'remote-selection' },
+        });
+      }
+      remoteDecorationsRef.current = editor.deltaDecorations(
+        remoteDecorationsRef.current,
+        decorations
+      );
+
+      // Caret + name flag, drawn as a content widget pinned to the position.
+      remoteWidgetPosRef.current = position;
+      const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight);
+      if (!remoteWidgetRef.current) {
+        const node = document.createElement('div');
+        node.className = 'remote-cursor';
+        const flag = document.createElement('div');
+        flag.className = 'remote-cursor-flag';
+        flag.textContent = PARTNER_NAME;
+        const bar = document.createElement('div');
+        bar.className = 'remote-cursor-bar';
+        node.appendChild(flag);
+        node.appendChild(bar);
+        remoteWidgetRef.current = {
+          getId: () => 'collab.remote.cursor',
+          getDomNode: () => node,
+          getPosition: () => {
+            const pos = remoteWidgetPosRef.current;
+            if (!pos) return null;
+            return {
+              position: pos,
+              preference: [monaco.editor.ContentWidgetPositionPreference.EXACT],
+            };
+          },
+        };
+        editor.addContentWidget(remoteWidgetRef.current);
+      }
+      const node = remoteWidgetRef.current.getDomNode();
+      node.style.height = `${lineHeight}px`;
+      editor.layoutContentWidget(remoteWidgetRef.current);
+
+      // Fade the caret out if the partner goes idle.
+      if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
+      cursorHideTimerRef.current = setTimeout(clearRemoteCursor, 8000);
+    },
+    [clearRemoteCursor]
+  );
+
+  // Wire up the Monaco editor once it mounts: broadcast local cursor +
+  // scroll changes and keep handles for rendering the partner's cursor.
+  const handleEditorMount = useCallback<OnMount>(
+    (editor, monaco) => {
+      editorRef.current = editor;
+      monacoRef.current = monaco;
+
+      // Broadcast local caret / selection movements.
+      editor.onDidChangeCursorSelection((e) => {
+        if (applyingRemoteRef.current) return;
+        const sel = e.selection;
+        sendCollab({
+          type: 'cursor',
+          position: { lineNumber: sel.positionLineNumber, column: sel.positionColumn },
+          selection: {
+            startLineNumber: sel.startLineNumber,
+            startColumn: sel.startColumn,
+            endLineNumber: sel.endLineNumber,
+            endColumn: sel.endColumn,
+          },
+        });
+      });
+
+      // Broadcast local scroll position (rAF-throttled to avoid flooding).
+      editor.onDidScrollChange(() => {
+        if (applyingRemoteScrollRef.current) return;
+        if (scrollRafRef.current != null) return;
+        scrollRafRef.current = requestAnimationFrame(() => {
+          scrollRafRef.current = null;
+          sendCollab({
+            type: 'scroll',
+            scrollTop: editor.getScrollTop(),
+            scrollLeft: editor.getScrollLeft(),
+          });
+        });
+      });
+    },
+    [sendCollab]
+  );
+
   // Apply incoming collaboration updates from the partner.
   useEffect(() => {
     const off = onCollab((msg) => {
@@ -338,10 +490,32 @@ export default function QuickSolvePage() {
         setTimeout(() => {
           applyingRemoteRef.current = false;
         }, 0);
+      } else if (msg.type === 'cursor') {
+        renderRemoteCursor(
+          msg.position as { lineNumber: number; column: number } | undefined,
+          msg.selection as
+            | { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number }
+            | undefined
+        );
+      } else if (msg.type === 'scroll') {
+        const editor = editorRef.current;
+        if (!editor) return;
+        applyingRemoteScrollRef.current = true;
+        if (typeof msg.scrollTop === 'number') editor.setScrollTop(msg.scrollTop);
+        if (typeof msg.scrollLeft === 'number') editor.setScrollLeft(msg.scrollLeft);
+        // Release after the scroll settles so we don't echo it back.
+        requestAnimationFrame(() => {
+          applyingRemoteScrollRef.current = false;
+        });
       }
     });
     return off;
-  }, [onCollab]);
+  }, [onCollab, renderRemoteCursor]);
+
+  // Tidy up the partner cursor when live sync drops (partner left / channel closed).
+  useEffect(() => {
+    if (!collabReady) clearRemoteCursor();
+  }, [collabReady, clearRemoteCursor]);
 
   const runCode = useCallback(async () => {
     if (isRunning) return;
@@ -641,6 +815,7 @@ export default function QuickSolvePage() {
               language={langOption.monaco}
               value={code}
               onChange={handleCodeChange}
+              onMount={handleEditorMount}
               theme="vs-dark"
               options={{
                 minimap: { enabled: false },

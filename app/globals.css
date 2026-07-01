@@ -247,3 +247,36 @@
   border-radius: 0.75rem;
   width: 100%;
 }
+
+/* ---- Live collaboration: partner cursor + selection in Monaco ---- */
+.remote-cursor {
+  position: relative;
+  pointer-events: none;
+  z-index: 40;
+}
+.remote-cursor-bar {
+  width: 2px;
+  height: 100%;
+  background: #f472b6;
+  box-shadow: 0 0 4px rgba(244, 114, 182, 0.7);
+}
+.remote-cursor-flag {
+  position: absolute;
+  top: -1.25em;
+  left: -1px;
+  height: 1.2em;
+  line-height: 1.2em;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #f472b6;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+  font-family: system-ui, -apple-system, sans-serif;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.remote-selection {
+  background: rgba(244, 114, 182, 0.28);
+  border-radius: 2px;
+}
