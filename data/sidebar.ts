@@ -37,6 +37,20 @@ export const sidebarItems: SidebarMenuItem[] = [
     href: '/discussion',
   },
   {
+    id: 'newsroom',
+    label: 'Newsroom',
+    icon: 'newspaper',
+    section: 'main',
+    href: '/news',
+  },
+  {
+    id: 'studio',
+    label: 'Content Studio',
+    icon: 'pen-square',
+    section: 'main',
+    href: '/cms',
+  },
+  {
     id: 'leaderboards',
     label: 'Leaderboards',
     icon: 'crown',

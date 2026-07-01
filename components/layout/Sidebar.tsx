@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Gift, Trophy, Users, Crown, Newspaper, MessageSquare,
   Handshake, Shield, Headphones, Globe, ChevronDown, Code2, Activity, BookOpen,
-  Home, Bookmark,
+  Home, Bookmark, PenSquare,
 } from 'lucide-react';
 import { sidebarItems } from '@/data/sidebar';
 
@@ -26,6 +26,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   'book-open': BookOpen,
   home: Home,
   bookmark: Bookmark,
+  'pen-square': PenSquare,
 };
 
 interface SidebarProps {
