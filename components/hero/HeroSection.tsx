@@ -6,6 +6,11 @@ import PromoCard from './PromoCard';
 import SocialLoginButtons from './SocialLoginButtons';
 import { Users, Code2, BookOpen, Video, MessageSquare, Rocket, ArrowRight, Heart } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
+import priti_jha from "@/public/inspire/priti_jha.png";
+import manshi_sharma from "@/public/inspire/Manshi_sharma.png";
+import keshav_jain from "@/public/inspire/keshav_jain.png";
+import kartik_gupta from "@/public/inspire/kartik_gupta.png";
+
 
 interface HeroSectionProps {
   onOpenAuth?: (tab: 'login' | 'register') => void;
@@ -223,23 +228,23 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             className="flex items-center gap-3 mt-2"
           >
             <div className="flex items-center">
-              {[14, 22, 33, 44].map((img, i) => (
+              {[priti_jha, manshi_sharma, keshav_jain, kartik_gupta].map((img, i) => (
                 <img
-                  key={img}
-                  src={`https://i.pravatar.cc/48?img=${img}`}
+                  key={i}
+                  src={img.src}
                   alt=""
-                  className="w-8 h-8 rounded-full border-2 object-cover"
+                  className="w-10 h-10 rounded-full border-2 object-cover"
                   style={{ marginLeft: i === 0 ? 0 : -10, borderColor: '#0f212e' }}
                 />
               ))}
               <span
-                className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
+                className=" text-xs px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
                 style={{ background: '#ec4899' }}
               >
                 +20K
               </span>
             </div>
-            <span className="text-sm font-medium" style={{ color: '#e6eaf2' }}>
+            <span className="text-sm ml-2 font-medium" style={{ color: '#e6eaf2' }}>
               Loved by <span className="font-bold text-white">80K+</span> developers worldwide
             </span>
 
